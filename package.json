@@ -11,8 +11,9 @@
   ],
   "author": "",
   "license": "ISC",
-  "devDependencies": {
+  "dependencies": {
     "ncp": "^2.0.0",
-    "yargs": "^3.32.0"
+    "yargs": "^3.32.0",
+    "fs-extra": "latest"
   }
 }
