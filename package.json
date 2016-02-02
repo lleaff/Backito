@@ -12,6 +12,7 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "ncp": "^2.0.0"
+    "ncp": "^2.0.0",
+    "yargs": "^3.32.0"
   }
 }
