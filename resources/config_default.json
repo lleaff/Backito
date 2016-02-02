@@ -1,0 +1,6 @@
+{
+    "name": "user",
+    "destinations" : [
+        "~/backito_files"
+    ]
+}
