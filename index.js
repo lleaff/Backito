@@ -1,4 +1,6 @@
-#!/usr/bin/env node
+#!/usr/bin/env node --harmony-destructuring
+
+var { compose, curry } = require('ramda');
 
 var argv = require('yargs')
     .boolean(['r'])
