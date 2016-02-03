@@ -1,4 +1,4 @@
-function asyncForEach(array, fn, callback) {
+module.exports.asyncForEach = function asyncForEach(array, fn, callback) {
     var processedIndexes = [];
     array.map(function (val, i, arr) {
         fn(val, _ => processedIndexes[i] = true);

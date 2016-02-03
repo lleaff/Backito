@@ -1,4 +1,4 @@
-function asyncMap(array, fn, callback) {
+module.exports.asyncMap = function asyncMap(array, fn, callback) {
     var newArr = [];
     var processedIndexes = [];
     array.map(function (val, i, arr) {
