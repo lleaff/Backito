@@ -1,6 +1,6 @@
 
 var cfg = require('../config');
-var utils = require('utils');
+var utils = require('../utils');
 
 var crypto = require('crypto');
 function hashPath(path) {
@@ -9,11 +9,7 @@ function hashPath(path) {
 
 var fs = require('fs');
 function storeFile(path, storage) {
-    utils.canReadwrite(path, function(err) {
-        if (!err) {
-            
-        }
-    });
+    if (utils.canReadwrite(path))
 }
 
 module.exports = {};

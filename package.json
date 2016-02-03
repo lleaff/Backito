@@ -14,9 +14,10 @@
   "license": "ISC",
   "dependencies": {
     "fs-extra": "latest",
+    "jdiff-node": "lleaff/jdiff-node",
+    "mkdirp": "^0.5.1",
     "ncp": "^2.0.0",
     "ramda": "^0.19.1",
-    "yargs": "^3.32.0",
-    "jdiff-node": "lleaff/jdiff-node"
+    "yargs": "^3.32.0"
   }
 }
