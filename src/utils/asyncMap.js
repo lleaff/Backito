@@ -1,9 +1,11 @@
 module.exports = function asyncMap(array, fn, callback) {
     var newArr = [];
     var processedIndexes = [];
-    array.map(function (val, i, arr) {
-        newArr[i] = fn(val, function() {
+    array.forEach(function (val, i, arr) {
+        fn(val, function(res) {
+            newArr[i] = res;
             processedIndexes[i] = true;
+            console.log('processedIndexes', processedIndexes);//DEBUG
             if (array.every((_, i) => processedIndexes[i]))
                 callback(newArr);
         });
