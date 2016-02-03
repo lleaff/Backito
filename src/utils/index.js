@@ -1,6 +1,10 @@
 module.exports = {
+    // External
+    mkdirp: require('mkdirp'),
+    // Internal
     forEach: require('./asyncForEach'),
     map: require('./asyncMap'),
     canReadwrite: require('./canReadwrite'),
-    mkdirp: require('mkdirp')
+    epoch: require('./epoch'),
+    trace: require('./trace')
 };
