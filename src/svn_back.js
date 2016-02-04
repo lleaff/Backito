@@ -9,6 +9,7 @@ function svn_co (dest)
 			var stringdec = new (require('string_decoder').StringDecoder)('utf-8');
 			console.log(stringdec.write(err));
 		});
+		svnco.stdin.pipe(process.stdin);
 		svnco.on('exit', function(code, mes) 
 		    {
 		        if (code === 0)
