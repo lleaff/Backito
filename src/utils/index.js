@@ -8,5 +8,6 @@ module.exports = {
     epoch: require('./epoch'),
     trace: require('./trace'),
     error: require('./error'),
-    removeTrailing: require('./removeTrailing.js')
+    removeTrailing: require('./removeTrailing.js'),
+    ifElseErr: require('./ifElseErr.js'),
 };

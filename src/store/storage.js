@@ -80,7 +80,7 @@ function restore(path, output, callback, errCallback) {
         return utils.error(`Can't find "${path}" in storage.`);
     var history = getFileHistory(path);
     if (!history.hasPatches)
-        fs.copy(history.base, output, callback);
+        fs.copy(history.base, output, utils.ifElseErr(callback, errCallback));
     else
         jdiff.patchSeries(history.base, history.patches,
                           output, callback, errCallback);
@@ -90,10 +90,8 @@ function restore(path, output, callback, errCallback) {
 //------------------------------------------------------------
 
 function addNewFile(file, destEntry, callback, errCallback) {
-    fs.copy(file, path.join(destEntry, file), function(err) {
-        if (err) { errCallback.apply(this, arguments); }
-        else { callback.apply(this, arguments); }
-    });
+    fs.copy(file, path.join(destEntry, file),
+            utils.ifElseErr(callback, errCallback));
 }
 
 function updateFile(file, destEntry, callback, errCallback) {
@@ -123,8 +121,8 @@ function add(path, destEntry, callback, errCallback) {
             if (err) { return errCallback(err); }
             utils.map(paths, function(path) {
                 add(path, destEntry, (_ => _), errCallback);
-                /* TODO: verify that callback is actually called when
-                   everything is process */
+                /* TODO: verify that callback is actually called *after*
+                   everything is processed */
             }, callback);
         });
     }
@@ -156,7 +154,8 @@ var basicExport = {
     oldestEntry,
     newEntry,
     add,
-    store
+    store,
+    restore
 };
 
 Object.assign(module.exports, basicExport);
