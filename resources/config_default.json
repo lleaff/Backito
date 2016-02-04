@@ -1,6 +1,32 @@
 {
-    "name": "user",
     "destinations" : [
-        "~/backito_files"
+    	{	
+    		"type" : "lcl",
+        	"path" : "~/backito_files"
+    	},
+    	{
+    		"type" : "ssh",
+    		"host" : "192.168.53.30",
+    		"user" : "amira_s",
+    		"path" : "~"
+    	},
+    	{
+    		"type" : "ftp",
+    		"host" : "192.168.53.30",
+    		"user" : "amira_s",
+    		"path" : "~"    		
+    	},
+    	{
+    		"type" : "svn",
+    		"host" : "192.168.53.30",
+    		"user" : "amira_s",
+    		"path" : "~"    		
+    	},
+    	{
+    		"type" : "git",
+    		"host" : "192.168.53.30",
+    		"user" : "amira_s",
+    		"path" : "~"    		
+    	}
     ]
 }

@@ -1,11 +1,11 @@
 var scp = require('scp');
 var svn = require('svn-spawn');
+var spawn = require('child_process').spawn;
 
 function parse_ssh(str, callback)
 {
 	var res = str.split("@");
 	var ret = [];
-	var ret =[]; 
 	ret["user"] = res[0];
 	var tmp = res[1].split(":");
 	ret["host"] = tmp[0];
@@ -13,14 +13,13 @@ function parse_ssh(str, callback)
 	callback(ret);
 }
 
-
 module.exports = {
 	ftp_back: function(dest, args, v)
 	{
 		console.log("backup via ftp protocole to :", dest);
 		console.log(args);
 	},
-	ssh_back: function(dest, args, v)
+	ssh_back: function(dest, args, v, callback)
 	{
 		console.log("backup via ssh protocole to :", dest);
 		if (v == 2)
@@ -41,6 +40,8 @@ module.exports = {
 									console.log(args[i], ' transferred.');
 								if (args.length > i + 1) 
 									scpSendArg(i+1);
+								else
+									callback();
 						}.bind(null, i));
 				}(0);
 				
@@ -75,33 +76,53 @@ module.exports = {
 		console.log("backup to git :", dest);
 		console.log(args);
 	},
-	svn_back: function(dest, args, v)
+	svn_back: function(dest, args, v, callback)
 	{
-		console.log("backup to svn :", dest);
+		console.log("backup to working copy :", dest);
 		if (v == 2)
 		{
 			var client = new svn({
 			    cwd: dest,
-			    username: 'amira_s',
-			    // password: 'fdkjhfdskj'
-			});
-			client.cmd(['add', '-q', args[0]], function(err, data) {
-			    console.log('subcommand done');
-			    console.log(err);
-			    console.log(data);
+			    silent: true
 			});
 			!function svnSendArg(i) {
 				client.add(args[i], function(i, err, data) {
-				    if (err == null) 
+					if ((err == null) || (err.toString().match(/is already under version control/))) 
 					{    
-					    client.commit(['making some changes on ' + args[i], args[i]], function(i, err, data) {
-					        console.log('committed ', args[i]);
+					    client.commit(['updated ' + args[i], args[i]], function(i, err, data) {
+					        console.log(args[i], "has been commited");
+					   	if (args.length > i + 1) 
+							svnSendArg(i  + 1);
+						else
+							callback();
 					    }.bind(null, i));
 			    	}
+				    else if (err.toString().match(/is not a working copy/))
+				    	console.log("You can't commit your files in ", dest, "because it is not a working copy.");
+			    	else if (err.toString().match(/E200009/))
+			    	{
+			    		var cp = spawn('cp', ['-r', args[i], dest]);
+					    cp.on('exit', function(code) 
+					    {
+					        if (code === 0)
+					         {
+					         	client.commit(['updated ' + args[i], args[i]], function(i, err, data) {
+							        console.log(args[i], "has been commited");
+							   	if (args.length > i + 1) 
+									svnSendArg(i  + 1);
+								else
+									callback();
+							    }.bind(null, i));
+					         }   
+					        else
+					            console.log(err.toString());
+					    });
+			    	}
 			    	else
+			    	{
 			    		console.log("Something went wrong with ", args[i]);
-					if (args.length > i + 1) 
-						svnSendArg(i  + 1);
+			    		console.log(err.toString());
+			    	}
 				}.bind(null, i));
 			}(0);
 		}			

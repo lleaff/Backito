@@ -16,43 +16,29 @@ var argv  = require('yargs')
     .alias('s', 'schedule')
     .argv;
 
-function check_info(path, callback)
+function check_info(path)
 {
 	console.log("destination ommited, looking for config file");
 	var  config = require(path);
 	if (Object.keys(config).length > 0)
 	{
 		var dest = config.destinations;
-		callback (dest);
+		return (dest);
 	}
 	else
 	{
 		console.log("Config file doesn't exist.");
-		callback (null);
+		return (null);
 	}	
 }
 
-function backs(type, dest, args, v)
+function backs(i, path, args, v, callback)
 {
-	switch (type) {
-	  case "ftp":
-	  	back.ftp_back(dest, args, v);
-	    break;
-	  case "ssh":
-		back.ssh_back(dest, args, v);
-	    break;
-	  case "git":
-	  	back.git_back(dest, args, v);
-	    break;
-	  case "svn":
-	  	back.svn_back(dest, args, v);
-	    break;
-	  case "lcl":
-	  	back.lcl_back(dest, args, v);
-	    break;
-	  default:
+	var func = [ 'ftp', 'ssh', 'git', 'svn', 'lcl'];
+	if (func.indexOf(path[i]) !== -1)
+		back[path[i] + '_back'](path[i+1], args, v, callback);
+	else
 	    console.log("Unrecognized type of backup destination.");
-	}
 }
 
 function backup(path, v, args)
@@ -65,10 +51,20 @@ function backup(path, v, args)
 	else if (v == 2)
 	{
 		console.log("starting backup from -d arguments");
-		for (var i = 0; i < path.length; i++) {
+		!function backs_loop(i) {	
 			if (i % 2 == 0)
-				backs(path[i], path[i + 1], args, 2);
-		};	
+			{
+				backs(i, path, args, 2, function(i){
+					if (i + 1 < path.length)
+						backs_loop(i + 1);
+				}.bind(null, i));
+			}
+			else
+			{
+				if (i + 1 < path.length)
+					backs_loop(i + 1);				
+			}
+		}(0);	
 	}
 }
 
@@ -104,16 +100,14 @@ utils.map(argv._, function(path, callback){
 }, function(stats){
 	if (!argv.d)
 	{
-		check_info('./resources/config_default.json', function(dest)
-		{
-			if (dest == null)
-			{	
-				console.log("An error occured !");
-				console.log("Please state the destination with -d or restart backito with w option to configure your config file.");
-			}
-			else
-				backup(dest, 1, argv._);
-		});
+		var dest = check_info('./resources/config_default.json');
+		if (dest === null)
+		{	
+			console.log("An error occured !");
+			console.log("Please state the destination with -d or restart backito with w option to configure your config file.");
+		}
+		else
+			backup(dest, 1, argv._);
 	}
 	else 
 	{
