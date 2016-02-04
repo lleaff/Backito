@@ -1,4 +1,5 @@
 var scp = require('scp');
+var svn = require('svn-spawn');
 
 function parse_ssh(str, callback)
 {
@@ -45,18 +46,29 @@ module.exports = {
 				
 			});
 		}
-		// else
-		// {
-		// 	for (var i = 0; i < args.length; i++) {
-		// 		client.scp(args[i], {
-		// 		    host: '',
-		// 		    username: 'admin',
-		// 		    password: 'password',
-		// 		    path: '/home/admin/'
-		// 		}, function(err) {})
-		// 	};
+		else
+		{
+			var option = {
+				file: "",
+				user: dest["user"],
+				host: dest["host"],
+				path: dest["path"],
+				bypassFingerprint: true
+			}
+			!function scpSendArg(i) {
+			option.file = args[i];
+			client.scp(option, 
+				function (i, err) {
+					if (err)
+						console.log(err);
+					else 
+						console.log(args[i], ' transferred.');
+					if (args.length > i + 1) 
+						scpSendArg(i+1);
+				}.bind(null, i));
+			}(0);
 
-		// }
+		}
 	},
 	git_back: function(dest, args, v)
 	{
@@ -66,7 +78,33 @@ module.exports = {
 	svn_back: function(dest, args, v)
 	{
 		console.log("backup to svn :", dest);
-		console.log(args);
+		if (v == 2)
+		{
+			var client = new svn({
+			    cwd: dest,
+			    username: 'amira_s',
+			    // password: 'fdkjhfdskj'
+			});
+			client.cmd(['add', '-q', args[0]], function(err, data) {
+			    console.log('subcommand done');
+			    console.log(err);
+			    console.log(data);
+			});
+			!function svnSendArg(i) {
+				client.add(args[i], function(i, err, data) {
+				    if (err == null) 
+					{    
+					    client.commit(['making some changes on ' + args[i], args[i]], function(i, err, data) {
+					        console.log('committed ', args[i]);
+					    }.bind(null, i));
+			    	}
+			    	else
+			    		console.log("Something went wrong with ", args[i]);
+					if (args.length > i + 1) 
+						svnSendArg(i  + 1);
+				}.bind(null, i));
+			}(0);
+		}			
 	},
 	lcl_back: function(dest, args, v)
 	{
