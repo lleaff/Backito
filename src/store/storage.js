@@ -75,7 +75,7 @@ function _getPatches(path) {
         .filter(utils.canReadwrite);
 }
 
-function restore(path, output, callback, errCallback) {
+function restoreFile(file, output, callback, errCallback) {
     if (!utils.canReadwrite(STORAGEDIR))
         return utils.error(`Can't find "${path}" in storage.`);
     var history = getFileHistory(path);
@@ -84,6 +84,26 @@ function restore(path, output, callback, errCallback) {
     else
         jdiff.patchSeries(history.base, history.patches,
                           output, callback, errCallback);
+}
+
+function restore(path, output, callback, errCallback) {
+    if (!fs.stat(path).isDirectory())
+        restoreFile(path, output, callback, errCallback);
+    else {
+        var dirname = path.basename(path);
+        fs.mkdir(path.join(output, dirname), errCallback);
+        fs.readdir(path, function(err, paths) {
+            if (err) { return errCallback(err); }
+            utils.map(files, function(file) {
+                restoreFile(path.join(path, file),
+                            path.join(output, file),
+                            (_ => _),
+                            errCallback);
+                /* TODO: verify that callback is actually called *after*
+                   everything is processed */
+            }, callback);
+        });
+    }
 }
 
 // =Add
@@ -98,7 +118,10 @@ function updateFile(file, destEntry, callback, errCallback) {
     var restored = path.join(RESTOREDIR, file);
     restore(file, restored, function() {
         jdiff(restored, file, path.join(destEntry, file+PATCHEXT),
-              callback, errCallback);
+              function() {
+                  fs.remove(restored);
+                  callback.apply(this, arguments);
+              }, errCallback);
     }, errCallback);
 }
 
@@ -117,10 +140,13 @@ function add(path, destEntry, callback, errCallback) {
     if (!fs.statSync(path).isDirectory)
         addFile(path, destEntry, callback, errCallback);
     else {
-        fs.readdir(path, function(err, paths) {
+        fs.readdir(path, function(err, files) {
             if (err) { return errCallback(err); }
-            utils.map(paths, function(path) {
-                add(path, destEntry, (_ => _), errCallback);
+            utils.map(files, function(file) {
+                add(path.join(path, file),
+                    path.join(destEntry, file),
+                    (_ => _),
+                    errCallback);
                 /* TODO: verify that callback is actually called *after*
                    everything is processed */
             }, callback);
