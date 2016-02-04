@@ -2,8 +2,9 @@ var scp = require('scp');
 var svn = require('svn-spawn');
 var spawn = require('child_process').spawn;
 var utils = require('./utils');
-
+var svn = require('./svn_back');
 var store = require('./store');
+
 
 function parse_ssh(str, callback)
 {
@@ -79,57 +80,7 @@ module.exports = {
 		console.log("backup to git :", dest);
 		console.log(args);
 	},
-	svn_back: function(dest, args, v, callback)
-	{
-		console.log("backup to working copy :", dest);
-		if (v == 2)
-		{
-			var client = new svn({
-			    cwd: dest,
-			    silent: true
-			});
-			!function svnSendArg(i) {
-				client.add(args[i], function(i, err, data) {
-					if ((err == null) || (err.toString().match(/is already under version control/))) 
-					{    
-					    client.commit(['updated ' + args[i], args[i]], function(i, err, data) {
-					        console.log(args[i], "has been commited");
-					   	if (args.length > i + 1) 
-							svnSendArg(i  + 1);
-						else
-							callback();
-					    }.bind(null, i));
-			    	}
-				    else if (err.toString().match(/is not a working copy/))
-				    	console.log("You can't commit your files in ", dest, "because it is not a working copy.");
-			    	else if (err.toString().match(/E200009/))
-			    	{
-			    		var cp = spawn('cp', ['-r', args[i], dest]);
-					    cp.on('exit', function(code) 
-					    {
-					        if (code === 0)
-					         {
-					         	client.commit(['updated ' + args[i], args[i]], function(i, err, data) {
-							        console.log(args[i], "has been commited");
-							   	if (args.length > i + 1) 
-									svnSendArg(i  + 1);
-								else
-									callback();
-							    }.bind(null, i));
-					         }   
-					        else
-					            console.log(err.toString());
-					    });
-			    	}
-			    	else
-			    	{
-			    		console.log("Something went wrong with ", args[i]);
-			    		console.log(err.toString());
-			    	}
-				}.bind(null, i));
-			}(0);
-		}			
-	},
+	svn_back : svn.svn_back,
 	lcl_back: function(dest, args, v, callback)
 	{
 		console.log("local backup to :", dest);

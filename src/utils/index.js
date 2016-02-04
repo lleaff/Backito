@@ -10,4 +10,5 @@ module.exports = {
     error: require('./error'),
     removeTrailing: require('./removeTrailing.js'),
     ifElseErr: require('./ifElseErr.js'),
+    hash: require('./hash')
 };
