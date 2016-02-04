@@ -1,17 +1,21 @@
 var spawn = require('child_process').spawn;
-var strdir = require('./config').storageDir;
+var cfg = require('./config');
 var utils = require('./utils');
+
+function svnRepoUrlToHash(url) {
+    return utils.hash(url);
+}  
 
 function svn_co (dest)
 	{
-		var svnco = spawn('svn', ['co',  dest, strdir + '/' + utils.hash(strdir)]);
+		var svnco = spawn('svn', ['co',  dest, cfg.svnStorage + '/' + svnRepoUrlToHash(dest)]);
 		svnco.stderr.on('data', function(err){
 			var stringdec = new (require('string_decoder').StringDecoder)('utf-8');
 			console.log(stringdec.write(err));
 		});
-		svnco.stdin.pipe(process.stdin);
 		svnco.on('exit', function(code, mes) 
 		    {
+                svnco.emit('end');
 		        if (code === 0)
 		         {
 		         	return (0);
@@ -20,6 +24,7 @@ function svn_co (dest)
 		         	console.log("Something went wrong!");
 		         	return (1);
 		    });
+		process.stdin.pipe(svnco.stdin);
 	};
 
 module.exports = {

@@ -1,7 +1,5 @@
-module.exports = function trace(expr, message) {
-    if (message)
-        console.log(message, expr);
-    else
-        console.log('trace:', expr);
+module.exports = function trace(expr, messageBegin, messageEnd) {
+    var args = [messageBegin, expr, messageEnd].filter(x => x);
+    console.log.apply(console, args);
     return expr;
 };

@@ -150,9 +150,8 @@ function add(path, destEntry, callback, errCallback) {
                 return errCallback(err);
             }
             utils.map(files, function(file) {
-                console.log()
-                add(path.join(path, file),
-                    path.join(destEntry, file),
+                add(trace(''+path.join(path, file), '[', ']'),
+                    ''+path.join(destEntry, file),
                     (_ => _),
                     errCallback);
                 /* TODO: verify that callback is actually called *after*
