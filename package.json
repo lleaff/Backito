@@ -13,7 +13,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "fs-extra": "latest",
+    "fs-extra": "^0.26.5",
     "jdiff-node": "lleaff/jdiff-node",
     "mkdirp": "^0.5.1",
     "ncp": "^2.0.0",

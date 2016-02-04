@@ -6,5 +6,7 @@ module.exports = {
     map: require('./asyncMap'),
     canReadwrite: require('./canReadwrite'),
     epoch: require('./epoch'),
-    trace: require('./trace')
+    trace: require('./trace'),
+    error: require('./error'),
+    removeTrailing: require('./removeTrailing.js')
 };
