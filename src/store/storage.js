@@ -1,8 +1,9 @@
-var fs = require('fs-extra');
-var cfg = require('../config');
-var utils = require('../utils');
-var R = require('ramda');
-var jdiff = require('jdiff-node');
+const fs = require('fs-extra');
+const path = require('path');
+const cfg = require('../config');
+const utils = require('../utils');
+const R = require('ramda');
+const jdiff = require('jdiff-node');
 
 const PATCHEXT = '.patch';
 const STORAGEDIR = cfg.storageDir;
@@ -10,7 +11,7 @@ const RESTOREDIR = path.join(cfg.storageDir, 'restored');
 
 (function _initStorageDir() {
     [STORAGEDIR, RESTOREDIR]
-        .forEach(utils.mkdirp);
+        .forEach(dir => utils.mkdirp.sync(dir));
 })();
 
 // =Entries
@@ -87,7 +88,7 @@ function restoreFile(file, output, callback, errCallback) {
 }
 
 function restore(path, output, callback, errCallback) {
-    if (!fs.stat(path).isDirectory())
+    if (!fs.statSync(path).isDirectory())
         restoreFile(path, output, callback, errCallback);
     else {
         var dirname = path.basename(path);
@@ -157,7 +158,16 @@ function add(path, destEntry, callback, errCallback) {
 // =Export
 //------------------------------------------------------------
 
+var basicExport = {
+    newestEntry,
+    oldestEntry,
+    newEntry,
+    add,
+    restore
+};
+
 module.exports = function BackupEntry() {
+    Object.assign(this, basicExport);
     this.newestEntry = newestEntry; //DEBUG
     this.oldestEntry = oldestEntry; //DEBUG
     this._getPatches = _getPatches; //DEBUG
@@ -167,21 +177,12 @@ module.exports = function BackupEntry() {
         var currEntry = newEntry();
         add(path, currEntry, callback, errCallback);
     }; 
-    this.store = function(paths, callback) {
+    this.store = function(paths, callback, errCallback) {
         var currEntry = newEntry();
         utils.forEach(paths,
                       path => add(path, currEntry, (_ => _), errCallback),
                       callback);
     }; 
-};
-
-var basicExport = {
-    newestEntry,
-    oldestEntry,
-    newEntry,
-    add,
-    store,
-    restore
 };
 
 Object.assign(module.exports, basicExport);

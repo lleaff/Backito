@@ -1,6 +1,9 @@
 var scp = require('scp');
 var svn = require('svn-spawn');
 var spawn = require('child_process').spawn;
+var utils = require('./utils');
+
+var store = require('./store');
 
 function parse_ssh(str, callback)
 {
@@ -127,10 +130,16 @@ module.exports = {
 			}(0);
 		}			
 	},
-	lcl_back: function(dest, args, v)
+	lcl_back: function(dest, args, v, callback)
 	{
 		console.log("local backup to :", dest);
-		console.log(args);
-	}
+        if (v !== 2) return console.error('Not implemented yet');
 
+        var entry = new store();
+        entry.store(args, function() {
+            utils.forEach(args, function(arg) {
+                entry.restore(arg, dest);
+            }, callback);
+        });
+    }
 }
