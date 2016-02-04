@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 
-const fs = require('fs');
-var cfg = require('./src/config');
+var fs    = require('fs');
+var cfg   = require('./src/config');
 var utils = require('./src/utils');
+var back  = require('./src/backups.js');
 
-var argv = require('yargs')
+var argv  = require('yargs')
     .usage('Usage: $0 [-r | -recursive] path [...] [-d | -dest destination] [-s | -schedule crontab_string]')
     .demand(1)
     .boolean(['r'])
@@ -14,8 +15,6 @@ var argv = require('yargs')
     .alias('d', 'dest')
     .alias('s', 'schedule')
     .argv;
-
-var back = require('./src/backups.js');
 
 function check_info(path, callback)
 {
@@ -33,24 +32,23 @@ function check_info(path, callback)
 	}	
 }
 
-
 function backs(type, dest, args, v)
 {
 	switch (type) {
 	  case "ftp":
-	  	back.ftp_back(dest, args);
+	  	back.ftp_back(dest, args, v);
 	    break;
 	  case "ssh":
-		back.ssh_back(dest, args, 2);
+		back.ssh_back(dest, args, v);
 	    break;
 	  case "git":
-	  	back.git_back(dest, args);
+	  	back.git_back(dest, args, v);
 	    break;
 	  case "svn":
-	  	back.svn_back(dest, args);
+	  	back.svn_back(dest, args, v);
 	    break;
 	  case "lcl":
-	  	back.lcl_back(dest, args);
+	  	back.lcl_back(dest, args, v);
 	    break;
 	  default:
 	    console.log("Unrecognized type of backup destination.");

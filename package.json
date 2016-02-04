@@ -2,7 +2,7 @@
   "name": "backito",
   "version": "0.0.1",
   "description": "Backup utility",
-  "main": "index.js",
+  "main": "backito.js",
   "scripts": {
     "start": "node --harmony-destructuring index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -20,6 +20,7 @@
     "ramda": "^0.19.1",
     "scp2": "^0.2.2",
     "ssh2": "^0.4.13",
+    "svn-spawn": "^0.1.4",
     "yargs": "^3.32.0"
   }
 }
