@@ -13,6 +13,7 @@ const RESTOREDIR = path.join(cfg.storageDir, 'restored');
         .forEach(utils.mkdirp);
 })();
 
+// =Entries
 //------------------------------------------------------------
 
 function newEntry() {
@@ -28,6 +29,7 @@ function _entries() {
 var newestEntry = R.compose(R.last, _entries);
 var oldestEntry = R.compose(R.head, _entries);
 
+// =Test entry
 //------------------------------------------------------------
 
 function hasPatch(entry, path) {
@@ -42,6 +44,7 @@ function hasFile(entry, path) {
     return (paths.indexOf(path) !== -1);
 }
 
+// =History
 //------------------------------------------------------------
 
 function getFileHistory(path) {
@@ -83,6 +86,7 @@ function restore(path, output, callback, errCallback) {
                           output, callback, errCallback);
 }
 
+// =Add
 //------------------------------------------------------------
 
 function addNewFile(file, destEntry, callback, errCallback) {
@@ -111,7 +115,7 @@ function addFile(file, destEntry, callback, errCallback) {
         updateFile(file, destEntry, callback, errCallback);
 }
 
-function add(path, destEntry,  callback, errCallback) {
+function add(path, destEntry, callback, errCallback) {
     if (!fs.statSync(path).isDirectory)
         addFile(path, destEntry, callback, errCallback);
     else {
@@ -126,22 +130,33 @@ function add(path, destEntry,  callback, errCallback) {
     }
 }
 
+// =Export
 //------------------------------------------------------------
+
+module.exports = function BackupEntry() {
+    this.newestEntry = newestEntry; //DEBUG
+    this.oldestEntry = oldestEntry; //DEBUG
+    this._getPatches = _getPatches; //DEBUG
+    this._entries = _entries; //DEBUG
+
+    this.add = function(path, callback, errCallback) {
+        var currEntry = newEntry();
+        add(path, currEntry, callback, errCallback);
+    }; 
+    this.store = function(paths, callback) {
+        var currEntry = newEntry();
+        utils.forEach(paths,
+                      path => add(path, currEntry, (_ => _), errCallback),
+                      callback);
+    }; 
+};
 
 var basicExport = {
     newestEntry,
     oldestEntry,
-    newEntry
+    newEntry,
+    add,
+    store
 };
 
-module.exports = basicExport;
-module.exports.init = function () {
-    var initialized = {
-        newestEntry,
-        oldestEntry,
-        _getPatches, //DEBUG
-        _entries, //DEBUG
-    };
-    initialized.add = add.bind(new_entry()); 
-    return initialized;
-};
+Object.assign(module.exports, basicExport);
