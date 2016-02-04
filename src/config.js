@@ -10,6 +10,8 @@ Object.assign(cfg, userCfg);
 
 cfg.storageDir = HOME + '/.backito_store';
 
+cfg.HOME = HOME;
+
 cfg.maxHistoryLevels = 10;
 
 module.exports = cfg;

@@ -7,7 +7,7 @@ const jdiff = require('jdiff-node');
 
 const PATCHEXT = '.patch';
 const STORAGEDIR = cfg.storageDir;
-const RESTOREDIR = path.join(cfg.storageDir, 'restored');
+const RESTOREDIR = path.join(STORAGEDIR, 'restored');
 
 (function _initStorageDir() {
     [STORAGEDIR, RESTOREDIR]
@@ -94,7 +94,10 @@ function restore(path, output, callback, errCallback) {
         var dirname = path.basename(path);
         fs.mkdir(path.join(output, dirname), errCallback);
         fs.readdir(path, function(err, paths) {
-            if (err) { return errCallback(err); }
+            if (err) {
+                console.error('DEBUG: restore: err:', err); //DEBUG
+                return errCallback(err);
+            }
             utils.map(files, function(file) {
                 restoreFile(path.join(path, file),
                             path.join(output, file),
@@ -138,12 +141,16 @@ function addFile(file, destEntry, callback, errCallback) {
 }
 
 function add(path, destEntry, callback, errCallback) {
-    if (!fs.statSync(path).isDirectory)
+    if (!fs.statSync(path).isDirectory())
         addFile(path, destEntry, callback, errCallback);
     else {
         fs.readdir(path, function(err, files) {
-            if (err) { return errCallback(err); }
+            if (err) {
+                console.error('DEBUG: restore: err:', err); //DEBUG
+                return errCallback(err);
+            }
             utils.map(files, function(file) {
+                console.log()
                 add(path.join(path, file),
                     path.join(destEntry, file),
                     (_ => _),
@@ -177,6 +184,7 @@ module.exports = function BackupEntry() {
         var currEntry = newEntry();
         add(path, currEntry, callback, errCallback);
     }; 
+
     this.store = function(paths, callback, errCallback) {
         var currEntry = newEntry();
         utils.forEach(paths,
