@@ -15,7 +15,7 @@ function svn_co (dest)
 		});
 		svnco.on('exit', function(code, mes) 
 		    {
-                svnco.emit('end');
+                svnco.stdin.end(); // TODO fix subprocess user input
 		        if (code === 0)
 		         {
 		         	return (0);
@@ -24,7 +24,7 @@ function svn_co (dest)
 		         	console.log("Something went wrong!");
 		         	return (1);
 		    });
-		process.stdin.pipe(svnco.stdin);
+		//process.stdin.pipe(svnco.stdin);
 	};
 
 module.exports = {
