@@ -1,7 +1,7 @@
-var args = require('../args');
+var cargs = require('../args');
 
 module.exports = function debug() {
-    if (!args.D) { return; }
+    if (!cargs.D) { return; }
 
     var args = Array.prototype.slice.call(arguments);
     args.unshift('DEBUG{');

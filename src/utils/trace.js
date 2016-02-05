@@ -1,7 +1,7 @@
-var args = require('../args');
+var cargs = require('../args');
 
 module.exports = function trace(expr, messageBegin, messageEnd) {
-    if (!args.D) { return; }
+    if (!cargs.D) { return; }
     var args = [messageBegin, expr, messageEnd].filter(x => x);
     console.log.apply(console, args);
     return expr;
