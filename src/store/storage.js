@@ -5,6 +5,7 @@ const utils = require('../utils');
 const R = require('ramda');
 const jdiff = require('jdiff-node');
 
+const ENTRYPREFIX = 's_';
 const PATCHEXT = '.patch';
 const STORAGEDIR = cfg.storageDir;
 const RESTOREDIR = path.join(STORAGEDIR, 'restored');
@@ -18,13 +19,15 @@ const RESTOREDIR = path.join(STORAGEDIR, 'restored');
 //------------------------------------------------------------
 
 function newEntry() {
-    var dirname = utils.epoch();
+    var dirname = ''+utils.epoch();
     fs.mkdirSync(STORAGEDIR+'/'+dirname);
     return dirname;
 }
 
 function _entries() {
-    return fs.readdirSync(STORAGEDIR).sort();
+    return fs.readdirSync(STORAGEDIR)
+        .filter(m => m.substr(0, ENTRYPREFIX.length) === ENTRYPREFIX)
+        .sort();
 }
 
 var newestEntry = R.compose(R.last, _entries);
@@ -33,33 +36,33 @@ var oldestEntry = R.compose(R.head, _entries);
 // =Test entry
 //------------------------------------------------------------
 
-function hasPatch(entry, path) {
-    path = utils.removeTrailing(path, '/');
+function hasPatch(entry, pth) {
+    pth = utils.removeTrailing(pth, '/');
     var paths = fs.readdirSync(entry);
-    return (paths.indexOf(path+PATCHEXT) !== -1);
+    return (paths.indexOf(pth+PATCHEXT) !== -1);
 }
 
-function hasFile(entry, path) {
-    path = utils.removeTrailing(path, '/');
+function hasFile(entry, pth) {
+    pth = utils.removeTrailing(pth, '/');
     var paths = fs.readdirSync(entry);
-    return (paths.indexOf(path) !== -1);
+    return (paths.indexOf(pth) !== -1);
 }
 
 // =History
 //------------------------------------------------------------
 
-function getFileHistory(path) {
+function getFileHistory(pth) {
     var history = _entries()
         .reverse()
         .map(function (entry) {
-            if (hasFile(entry, path))
-                return path;
-            else if (hasPatch(entry, path))
+            if (hasFile(entry, pth))
+                return pth;
+            else if (hasPatch(entry, pth))
                 return patch;
             else
                 return null;
         })
-        .filter(R.id);
+        .filter(x => x);
     var patches = history.slice(1);
     return {
         base: history[0],
@@ -69,17 +72,17 @@ function getFileHistory(path) {
     };
 }
 
-function _getPatches(path) {
-    var path = utils.removeTrailing(path, '/');
+function _getPatches(pth) {
+    var pth = utils.removeTrailing(pth, '/');
     return _entries()
-        .map(entry => entry+'/'+path+PATCHEXT)
+        .map(entry => entry+'/'+pth+PATCHEXT)
         .filter(utils.canReadwrite);
 }
 
 function restoreFile(file, output, callback, errCallback) {
     if (!utils.canReadwrite(STORAGEDIR))
-        return utils.error(`Can't find "${path}" in storage.`);
-    var history = getFileHistory(path);
+        return utils.error(`Can't find "${file}" in storage.`);
+    var history = getFileHistory(file);
     if (!history.hasPatches)
         fs.copy(history.base, output, utils.ifElseErr(callback, errCallback));
     else
@@ -87,19 +90,19 @@ function restoreFile(file, output, callback, errCallback) {
                           output, callback, errCallback);
 }
 
-function restore(path, output, callback, errCallback) {
-    if (!fs.statSync(path).isDirectory())
-        restoreFile(path, output, callback, errCallback);
+function restore(pth, output, callback, errCallback) {
+    if (!fs.statSync(pth).isDirectory())
+        restoreFile(pth, output, callback, errCallback);
     else {
-        var dirname = path.basename(path);
+        var dirname = path.basename(pth);
         fs.mkdir(path.join(output, dirname), errCallback);
-        fs.readdir(path, function(err, paths) {
+        fs.readdir(pth, function(err, paths) {
             if (err) {
                 console.error('DEBUG: restore: err:', err); //DEBUG
                 return errCallback(err);
             }
             utils.map(files, function(file) {
-                restoreFile(path.join(path, file),
+                restoreFile(path.join(pth, file),
                             path.join(output, file),
                             (_ => _),
                             errCallback);
@@ -121,7 +124,7 @@ function addNewFile(file, destEntry, callback, errCallback) {
 function updateFile(file, destEntry, callback, errCallback) {
     var restored = path.join(RESTOREDIR, file);
     restore(file, restored, function() {
-        jdiff(restored, file, path.join(destEntry, file+PATCHEXT),
+        jdiff.diff(restored, file, path.join(destEntry, file+PATCHEXT),
               function() {
                   fs.remove(restored);
                   callback.apply(this, arguments);
@@ -134,23 +137,23 @@ function addFile(file, destEntry, callback, errCallback) {
     if (!history.hasBase)
         addNewFile(file, destEntry, callback, errCallback);
     else if (!history.hasPatches)
-        jdiff(file, path.join(destEntry, file+PATCHEXT),
+        jdiff.diff(file, path.join(''+destEntry, file+PATCHEXT),
               callback, errCallback);
     else
         updateFile(file, destEntry, callback, errCallback);
 }
 
-function add(path, destEntry, callback, errCallback) {
-    if (!fs.statSync(path).isDirectory())
-        addFile(path, destEntry, callback, errCallback);
+function add(pth, destEntry, callback, errCallback) {
+    if (!fs.statSync(pth).isDirectory())
+        addFile(pth, destEntry, callback, errCallback);
     else {
-        fs.readdir(path, function(err, files) {
+        fs.readdir(pth, function(err, files) {
             if (err) {
                 console.error('DEBUG: restore: err:', err); //DEBUG
                 return errCallback(err);
             }
             utils.map(files, function(file) {
-                add(trace(''+path.join(path, file), '[', ']'),
+                add(utils.trace(''+path.join(pth, file), 'add[', ']'),
                     ''+path.join(destEntry, file),
                     (_ => _),
                     errCallback);
@@ -179,15 +182,15 @@ module.exports = function BackupEntry() {
     this._getPatches = _getPatches; //DEBUG
     this._entries = _entries; //DEBUG
 
-    this.add = function(path, callback, errCallback) {
+    this.add = function(pth, callback, errCallback) {
         var currEntry = newEntry();
-        add(path, currEntry, callback, errCallback);
+        add(pth, currEntry, callback, errCallback);
     }; 
 
     this.store = function(paths, callback, errCallback) {
         var currEntry = newEntry();
         utils.forEach(paths,
-                      path => add(path, currEntry, (_ => _), errCallback),
+                      pth => add(pth, currEntry, (_ => _), errCallback),
                       callback);
     }; 
 };
