@@ -1,6 +1,7 @@
 var spawn = require('child_process').spawn;
 var cfg = require('./config');
 var utils = require('./utils');
+var svn = require('svn-spawn');
 
 function svnRepoUrlToHash(url) {
     return utils.hash(url);
@@ -8,23 +9,34 @@ function svnRepoUrlToHash(url) {
 
 function svn_co (dest)
 	{
-		var svnco = spawn('svn', ['co',  dest, cfg.svnStorage + '/' + svnRepoUrlToHash(dest)]);
-		svnco.stderr.on('data', function(err){
-			var stringdec = new (require('string_decoder').StringDecoder)('utf-8');
-			console.log(stringdec.write(err));
+		// var svnco = spawn('svn', ['co',  dest, cfg.svnStorage + '/' + svnRepoUrlToHash(dest)]);
+		// svnco.stderr.on('data', function(err){
+		// 	var stringdec = new (require('string_decoder').StringDecoder)('utf-8');
+		// 	console.log(stringdec.write(err));
+		// });
+		// svnco.on('exit', function(code, mes) 
+		//     {
+		//	       svnco.stdin.end(); // TODO fix subprocess user input
+		//         if (code === 0)
+		//          {
+		//          	return (0);
+		//          }
+		//          else
+		//          	console.log("Something went wrong!");
+		//          	return (1);
+		//     });
+		var client = new svn({
+		cwd: ''
 		});
-		svnco.on('exit', function(code, mes) 
-		    {
-                svnco.stdin.end(); // TODO fix subprocess user input
-		        if (code === 0)
-		         {
-		         	return (0);
-		         }
-		         else
-		         	console.log("Something went wrong!");
-		         	return (1);
-		    });
-		//process.stdin.pipe(svnco.stdin);
+
+		client.cmd(['co',dest, cfg.svnStorage + '/' + svnRepoUrlToHash(dest)], function(err, data) {
+			if(!err){
+			console.log('subcommand done' + data);
+			}else{
+			console.log('the erro is '+ err);
+			}
+		});
+		
 	};
 
 module.exports = {
@@ -44,7 +56,7 @@ module.exports = {
 						if ((err == null) || (err.toString().match(/is already under version control/))) 
 						{    
 						    client.commit(['updated ' + args[i], args[i]], function(i, err, data) {
-						        console.log(args[i], "has been commited");
+						        console.log(args[i], "has been committed");
 						   	if (args.length > i + 1) 
 								svnSendArg(i  + 1);
 							else
@@ -61,7 +73,7 @@ module.exports = {
 						        if (code === 0)
 						         {
 						         	client.commit(['updated ' + args[i], args[i]], function(i, err, data) {
-								        console.log(args[i], "has been commited");
+								        console.log(args[i], "has been committed");
 								   	if (args.length > i + 1) 
 										svnSendArg(i  + 1);
 									else
