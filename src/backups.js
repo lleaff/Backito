@@ -1,5 +1,4 @@
 var scp = require('scp');
-var svn = require('svn-spawn');
 var spawn = require('child_process').spawn;
 var utils = require('./utils');
 var svn = require('./svn_back');
