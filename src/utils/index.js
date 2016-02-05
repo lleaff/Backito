@@ -4,6 +4,7 @@ module.exports = {
     // Internal
     forEach: require('./asyncForEach'),
     map: require('./asyncMap'),
+    find: require('./find'),
     canReadwrite: require('./canReadwrite'),
     epoch: require('./epoch'),
     trace: require('./trace'),
