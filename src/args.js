@@ -1,0 +1,11 @@
+module.exports = return require('yargs')
+    .usage('Usage: $0 [-r | -recursive] path [...] [-d | -dest destination] [-s | -schedule crontab_string]')
+    .demand(1)
+    .boolean(['r', 'w'])
+    .nargs('d', 2)
+    .alias('r', 'recursive')
+    .alias('d', 'dest')
+    .alias('s', 'schedule')
+    .boolean('D')
+    .alias('D', 'debug')
+    .argv;

@@ -5,16 +5,7 @@ var cfg   = require('./src/config');
 var utils = require('./src/utils');
 var back  = require('./src/backups.js');
 
-var argv  = require('yargs')
-    .usage('Usage: $0 [-r | -recursive] path [...] [-d | -dest destination] [-s | -schedule crontab_string]')
-    .demand(1)
-    .boolean(['r'])
-    .boolean(['w'])
-    .nargs('d', 2)
-    .alias('r', 'recursive')
-    .alias('d', 'dest')
-    .alias('s', 'schedule')
-    .argv;
+var argv  = require('./src/args');
 
 function check_info(path)
 {
