@@ -5,7 +5,7 @@ function check_only_one_time(argv, options) {
         .length <= 1;
 }
 
-module.exports = return require('yargs')
+module.exports = require('yargs')
     .usage('Usage: $0 [-r | -recursive] path [...] [-d | -dest destination] [-s | -schedule crontab_string]')
     .demand(1)
     .boolean(['r', 'w'])
