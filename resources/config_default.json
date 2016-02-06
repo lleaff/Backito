@@ -8,25 +8,25 @@
     		"type" : "ssh",
     		"host" : "192.168.53.30",
     		"user" : "amira_s",
-    		"path" : "~"
+    		"path" : ""
     	},
     	{
     		"type" : "ftp",
     		"host" : "192.168.53.30",
     		"user" : "amira_s",
-    		"path" : "~"    		
+    		"path" : ""    		
     	},
     	{
     		"type" : "svn",
     		"host" : "192.168.53.30",
     		"user" : "amira_s",
-    		"path" : "~"    		
+    		"path" : ""    		
     	},
     	{
     		"type" : "git",
     		"host" : "192.168.53.30",
     		"user" : "amira_s",
-    		"path" : "~"    		
+    		"path" : ""    		
     	}
     ]
 }
