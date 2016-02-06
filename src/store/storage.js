@@ -6,9 +6,11 @@ const R = require('ramda');
 const jdiff = require('jdiff-node');
 
 const ENTRYPREFIX = 's_';
-const PATCHEXT = '.patch';
+const PATCHEXT = '.bak_patch';
 const STORAGEDIR = cfg.storageDir;
 const RESTOREDIR = ''+path.join(STORAGEDIR, 'restored');
+const SUMDIR = '.bak_sums';
+const SUMEXT = '.sum';
 
 const readDirWithPath = function (name, o) {
     console.log('name', name);//DEBUG
@@ -28,6 +30,7 @@ const readDirWithPath = function (name, o) {
 function newEntry() {
     var dirname = ''+ENTRYPREFIX+utils.epoch();
     fs.mkdirSync(STORAGEDIR+'/'+dirname);
+    fs.mkdirSync(STORAGEDIR+'/'+dirname+'/'+SUMDIR);
     return dirname;
 }
 
@@ -138,6 +141,11 @@ function restore(pth, output, callback, errCallback) {
 // =Add
 //------------------------------------------------------------
 
+const hashFn = utils.hashSha256;
+function hashFile(pth) {
+    return hashFn(fs.readFileSync(pth));
+}
+
 function addNewFile(file, destEntry, callback, errCallback) {
     utils.debug('addNewFile:', file, '  destEntry:', destEntry);//DEBUG
     fs.copy(file, ''+path.join(STORAGEDIR, destEntry, file),
@@ -164,7 +172,7 @@ function addFile(file, destEntry, callback, errCallback) {
         jdiff.diff(history.base,
                    trace(file, 'file'), 
                    trace(''+path.join(''+destEntry, file+PATCHEXT), 'dest'),
-              callback, errCallback);
+                   callback, errCallback);
     else
         updateFile(file, destEntry, callback, errCallback);
 }

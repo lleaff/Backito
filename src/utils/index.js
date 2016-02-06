@@ -12,5 +12,6 @@ module.exports = {
     removeTrailing: require('./removeTrailing.js'),
     ifElseErr: require('./ifElseErr.js'),
     hash: require('./hash'),
+    hashSha256: require('./hashSha256'),
     debug: require('./debug'),
 };
