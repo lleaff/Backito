@@ -1,5 +1,4 @@
-const fs = require('fs-extra');
-const path = require('path');
+const fs = require('fs-extra');const path = require('path');
 const cfg = require('../config');
 const utils = require('../utils');
 const trace = utils.trace;
@@ -162,21 +161,22 @@ function addFile(file, destEntry, callback, errCallback) {
     if (!history.hasBase)
         addNewFile(file, destEntry, callback, errCallback);
     else if (!history.hasPatches)
-        jdiff.diff(file, ''+path.join(''+destEntry, file+PATCHEXT),
+        jdiff.diff(history.base,
+                   trace(file, 'file'), 
+                   trace(''+path.join(''+destEntry, file+PATCHEXT), 'dest'),
               callback, errCallback);
     else
         updateFile(file, destEntry, callback, errCallback);
 }
 
 function add(pth, destEntry, callback, errCallback) {
-    utils.debug('add(pth=', pth, ')');//DEBUG
     if (!fs.statSync(pth).isDirectory())
-        addFile(pth, destEntry, callback, errCallback);
+        addFile(pth, ''+path.join(STORAGEDIR, destEntry),
+                callback, errCallback);
     else {
         utils.mkdirp(''+path.join(STORAGEDIR, pth));
         fs.readdir(pth, function(err, files) {
             if (err) {
-                utils.debug('restore: err:', err); //DEBUG
                 return errCallback(err);
             }
             utils.map(files, function(file) {
