@@ -2,13 +2,21 @@ const fs = require('fs-extra');
 const path = require('path');
 const cfg = require('../config');
 const utils = require('../utils');
+const trace = utils.trace;
 const R = require('ramda');
 const jdiff = require('jdiff-node');
 
 const ENTRYPREFIX = 's_';
 const PATCHEXT = '.patch';
 const STORAGEDIR = cfg.storageDir;
-const RESTOREDIR = path.join(STORAGEDIR, 'restored');
+const RESTOREDIR = ''+path.join(STORAGEDIR, 'restored');
+
+const readDirWithPath = function (name, o) {
+    console.log('name', name);//DEBUG
+    if (o === undefined) o = {};
+    o.type = 'f';
+    return utils.find(name, o);
+};
 
 (function _initStorageDir() {
     [STORAGEDIR, RESTOREDIR]
@@ -19,7 +27,7 @@ const RESTOREDIR = path.join(STORAGEDIR, 'restored');
 //------------------------------------------------------------
 
 function newEntry() {
-    var dirname = ''+utils.epoch();
+    var dirname = ''+ENTRYPREFIX+utils.epoch();
     fs.mkdirSync(STORAGEDIR+'/'+dirname);
     return dirname;
 }
@@ -38,24 +46,39 @@ var oldestEntry = R.compose(R.head, _entries);
 
 function hasPatch(entry, pth) {
     pth = utils.removeTrailing(pth, '/');
-    var paths = fs.readdirSync(entry);
+    var paths = readDirWithPath(''+path.join(STORAGEDIR, entry));
     return (paths.indexOf(pth+PATCHEXT) !== -1);
 }
 
 function hasFile(entry, pth) {
     pth = utils.removeTrailing(pth, '/');
-    var paths = fs.readdirSync(entry);
+    var dir = ''+path.join(STORAGEDIR, ''+entry);
+    var paths = readDirWithPath(dir)
+        .map(pth => ''+path.relative(dir, pth));
+
+    utils.debug('paths', paths);
+    utils.debug('pth', pth);
     return (paths.indexOf(pth) !== -1);
 }
 
 // =History
 //------------------------------------------------------------
 
+Object.prototype.trace = function(first) {
+    var args = Array.prototype.slice.call(arguments);
+    if (first) args.shift();
+    args.unshift(this);
+    if (first) args.unshift(first);
+    console.log.apply(console, args);
+    return (this);
+}
+
 function getFileHistory(pth) {
+    console.log('_entries', _entries());//DEBUG
     var history = _entries()
         .reverse()
         .map(function (entry) {
-            if (hasFile(entry, pth))
+            if (trace(hasFile(entry, pth), 'hasFile:[', ']'))
                 return pth;
             else if (hasPatch(entry, pth))
                 return patch;
@@ -66,7 +89,7 @@ function getFileHistory(pth) {
     var patches = history.slice(1);
     return {
         base: history[0],
-        hasBase: (history[0] === undefined),
+        hasBase: (history[0] !== undefined),
         patches: patches,
         hasPatches: (patches[0] !== undefined)
     };
@@ -94,16 +117,16 @@ function restore(pth, output, callback, errCallback) {
     if (!fs.statSync(pth).isDirectory())
         restoreFile(pth, output, callback, errCallback);
     else {
-        var dirname = path.basename(pth);
-        fs.mkdir(path.join(output, dirname), errCallback);
+        var dirname = ''+path.basename(pth);
+        fs.mkdir(''+path.join(output, dirname), errCallback);
         fs.readdir(pth, function(err, paths) {
             if (err) {
                 console.error('DEBUG: restore: err:', err); //DEBUG
                 return errCallback(err);
             }
             utils.map(files, function(file) {
-                restoreFile(path.join(pth, file),
-                            path.join(output, file),
+                restoreFile(''+path.join(pth, file),
+                            ''+path.join(output, file),
                             (_ => _),
                             errCallback);
                 /* TODO: verify that callback is actually called *after*
@@ -117,14 +140,15 @@ function restore(pth, output, callback, errCallback) {
 //------------------------------------------------------------
 
 function addNewFile(file, destEntry, callback, errCallback) {
-    fs.copy(file, path.join(destEntry, file),
+    utils.debug('addNewFile:', file, '  destEntry:', destEntry);//DEBUG
+    fs.copy(file, ''+path.join(STORAGEDIR, destEntry, file),
             utils.ifElseErr(callback, errCallback));
 }
 
 function updateFile(file, destEntry, callback, errCallback) {
-    var restored = path.join(RESTOREDIR, file);
+    var restored = ''+path.join(RESTOREDIR, file);
     restore(file, restored, function() {
-        jdiff.diff(restored, file, path.join(destEntry, file+PATCHEXT),
+        jdiff.diff(restored, file, ''+path.join(destEntry, file+PATCHEXT),
               function() {
                   fs.remove(restored);
                   callback.apply(this, arguments);
@@ -134,27 +158,30 @@ function updateFile(file, destEntry, callback, errCallback) {
 
 function addFile(file, destEntry, callback, errCallback) {
     var history = getFileHistory(file);
+    utils.debug('history', history);//DEBUG
     if (!history.hasBase)
         addNewFile(file, destEntry, callback, errCallback);
     else if (!history.hasPatches)
-        jdiff.diff(file, path.join(''+destEntry, file+PATCHEXT),
+        jdiff.diff(file, ''+path.join(''+destEntry, file+PATCHEXT),
               callback, errCallback);
     else
         updateFile(file, destEntry, callback, errCallback);
 }
 
 function add(pth, destEntry, callback, errCallback) {
+    utils.debug('add(pth=', pth, ')');//DEBUG
     if (!fs.statSync(pth).isDirectory())
         addFile(pth, destEntry, callback, errCallback);
     else {
+        utils.mkdirp(''+path.join(STORAGEDIR, pth));
         fs.readdir(pth, function(err, files) {
             if (err) {
-                console.error('DEBUG: restore: err:', err); //DEBUG
+                utils.debug('restore: err:', err); //DEBUG
                 return errCallback(err);
             }
             utils.map(files, function(file) {
-                add(utils.trace(''+path.join(pth, file), 'add[', ']'),
-                    ''+path.join(destEntry, file),
+                add(''+path.join(pth, file),
+                    ''+path.join(destEntry),
                     (_ => _),
                     errCallback);
                 /* TODO: verify that callback is actually called *after*
