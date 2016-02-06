@@ -71,13 +71,16 @@ function hasFile(entry, pth) {
 //------------------------------------------------------------
 
 function getFileHistory(pth) {
-    utils.debug('_entries', _entries());//DEBUG
     var history = _entries()
         .map(function (entry) {
-            if (hasFile(entry, pth) || hasPatch(entry, pth))
+            if (hasFile(entry, pth))
                 return { entry: entry,
-                    path: pth,
-                    full: ''+path.join(STORAGEDIR, entry, pth) };
+                         path: pth,
+                         full: ''+path.join(STORAGEDIR, entry, pth) };
+            if (hasPatch(entry, pth))
+                return { entry: entry,
+                         path: pth,
+                         full: ''+path.join(STORAGEDIR, entry, pth+PATCHEXT) };
             else
                 return null;
         })
@@ -109,8 +112,9 @@ function restoreFile(file, output, callback, errCallback) {
         fs.copy(history.base.path, output,
                 utils.ifElseErr(callback, errCallback));
     else
-        jdiff.patchSeries(history.base.path, history.patches.map(
-            h => ''+path.join(STORAGEDIR, h.entry, h.path)),
+        jdiff.patchSeries(history.base.path,
+                          history.patches.map(
+                              h => ''+path.join(STORAGEDIR, h.entry, h.path+PATCHEXT)),
                           output, callback, errCallback);
 }
 
@@ -172,7 +176,7 @@ function addNewFile(file, hash, destEntry, callback, errCallback) {
     hashStoreFile(destEntry, file, hash, _callback, errCallback)
 }
 
-function updateFile(file, hash, destEntry, callback, errCallback) {
+function updateFile(history, file, hash, destEntry, callback, errCallback) {
     utils.debug(`updating "${file}"`);//DEBUG
     var done = 0;
     function _callback() {
@@ -180,15 +184,25 @@ function updateFile(file, hash, destEntry, callback, errCallback) {
             callback.apply(this, arguments);
     }
     var restored = ''+path.join(RESTOREDIR, file);
-    restore(file, restored, function() {
-        jdiff.diff(restored,
-                   file,
-                   ''+path.join(STORAGEDIR, destEntry, file+PATCHEXT),
-              function() {
-                  fs.remove(restored);
-                  _callback
-              }, errCallback);
-    }, errCallback);
+
+    if (!history.hasPatches) {
+        jdiff.diff(
+            history.base.full,
+            file,
+            ''+path.join(STORAGEDIR, destEntry, file+PATCHEXT),
+            _callback, errCallback);
+    } else {
+        const restoreCallback = function() {
+            jdiff.diff(restored,
+                       file,
+                       ''+path.join(STORAGEDIR, destEntry, file+PATCHEXT),
+                       function() {
+                           fs.remove(restored);
+                           _callback();
+                       }, errCallback);
+        };
+        restore(file, restored, restoreCallback, errCallback);
+    }
     hashStoreFile(destEntry, file, hash, _callback, errCallback)
 }
 
@@ -205,18 +219,8 @@ function addFile(file, destEntry, callback, errCallback) {
         utils.debug(`oldHash(`,oldHash,')<=>currHash(',currHash,')');//DEBUG
         if (currHash === oldHash) { utils.debug('FILE NOT MODIFIED'); return; }
         utils.debug('FILE CHANGED');//DEBUG
-        if (!history.hasPatches) {
-            utils.debug('JDIFF('+
-                        history.base.full+',\n'+
-                        file+',\n'+pathkjoin(STORAGEDIR, destEntry, file+PATCHEXT)+',\n');//DEBUG
-            jdiff.diff(
-                history.base.full,
-                file,
-                ''+path.join(STORAGEDIR, destEntry, file+PATCHEXT),
-                function() { console.log('JDIFFcallback: '+''+path.join(STORAGEDIR, destEntry, file+PATCHEXT)); callback.apply(arguments); }, errCallback);
-        } else {
-            updateFile(file, currHash, destEntry, callback, errCallback);
-        }
+        updateFile(history, file, currHash, destEntry,
+                   callback, errCallback);
     }
 }
 
