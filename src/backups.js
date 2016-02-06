@@ -83,7 +83,7 @@ module.exports = {
 	lcl_back: function(dest, args, v, callback)
 	{
 		console.log("local backup to :", dest);
-        if (v !== 2) return console.error('Not implemented yet');
+        if (v !== 2) { return utils.debug('lcl_back: Need to implement preferences'); }
 
         var entry = new store();
         entry.store(args, function() {

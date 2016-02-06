@@ -108,6 +108,7 @@ function restoreFile(file, output, callback, errCallback) {
     if (!utils.canReadwrite(STORAGEDIR))
         return utils.error(`Can't find "${file}" in storage.`);
     var history = getFileHistory(file);
+    utils.debug('restoreFile:', file, '\n\toutput:', output);//DEBUG
     if (!history.hasPatches)
         fs.copy(history.base.path, output,
                 utils.ifElseErr(callback, errCallback));
@@ -275,6 +276,10 @@ module.exports = function BackupEntry() {
                       pth => add(pth, currEntry, (_ => _), errCallback),
                       callback);
     }; 
+
+    this.restore = function(paths, callback, errCallback) {
+
+    };
 };
 
 Object.assign(module.exports, basicExport);
