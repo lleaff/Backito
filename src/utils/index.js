@@ -1,7 +1,5 @@
 module.exports = {
-    // External
-    mkdirp: require('mkdirp'),
-    // Internal
+    mkdirp: require('./mkdirp'),
     forEach: require('./asyncForEach'),
     map: require('./asyncMap'),
     find: require('./find'),

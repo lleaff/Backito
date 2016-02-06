@@ -10,10 +10,10 @@ const PATCHEXT = '.bak_patch';
 const STORAGEDIR = cfg.storageDir;
 const RESTOREDIR = ''+path.join(STORAGEDIR, 'restored');
 const SUMDIR = '.bak_sums';
-const SUMEXT = '.sum';
+const SUMDIRREGEX = new RegExp('\\.bak_sums\/');
 
 const readDirWithPath = function (name, o) {
-    console.log('name', name);//DEBUG
+    utils.debug('readDir:name', name);//DEBUG
     if (o === undefined) o = {};
     o.type = 'f';
     return utils.find(name, o);
@@ -56,7 +56,8 @@ function hasFile(entry, pth) {
     pth = utils.removeTrailing(pth, '/');
     var dir = ''+path.join(STORAGEDIR, ''+entry);
     var paths = readDirWithPath(dir)
-        .map(pth => ''+path.relative(dir, pth));
+        .map(pth => ''+path.relative(dir, pth))
+        .filter(pth => !SUMDIRREGEX.test(pth));
 
     utils.debug('paths', paths);
     utils.debug('pth', pth);
@@ -66,21 +67,11 @@ function hasFile(entry, pth) {
 // =History
 //------------------------------------------------------------
 
-Object.prototype.trace = function(first) {
-    var args = Array.prototype.slice.call(arguments);
-    if (first) args.shift();
-    args.unshift(this);
-    if (first) args.unshift(first);
-    console.log.apply(console, args);
-    return (this);
-}
-
 function getFileHistory(pth) {
-    console.log('_entries', _entries());//DEBUG
+    utils.debug('_entries', _entries());//DEBUG
     var history = _entries()
-        .reverse()
         .map(function (entry) {
-            if (trace(hasFile(entry, pth), 'hasFile:[', ']'))
+            if (hasFile(entry, pth))
                 return pth;
             else if (hasPatch(entry, pth))
                 return patch;
@@ -88,12 +79,15 @@ function getFileHistory(pth) {
                 return null;
         })
         .filter(x => x);
-    var patches = history.slice(1);
+    const newest  = history.length > 2 ?
+        history[history.length - 1] : history[0];
+    const patches = history.slice(1);
     return {
         base: history[0],
         hasBase: (history[0] !== undefined),
         patches: patches,
-        hasPatches: (patches[0] !== undefined)
+        hasPatches: (patches[0] !== undefined),
+        newest: newest
     };
 }
 
@@ -123,7 +117,7 @@ function restore(pth, output, callback, errCallback) {
         fs.mkdir(''+path.join(output, dirname), errCallback);
         fs.readdir(pth, function(err, paths) {
             if (err) {
-                console.error('DEBUG: restore: err:', err); //DEBUG
+                utils.debug('restore: err:', err); //DEBUG
                 return errCallback(err);
             }
             utils.map(files, function(file) {
@@ -146,43 +140,77 @@ function hashFile(pth) {
     return hashFn(fs.readFileSync(pth));
 }
 
-function addNewFile(file, destEntry, callback, errCallback) {
-    utils.debug('addNewFile:', file, '  destEntry:', destEntry);//DEBUG
-    fs.copy(file, ''+path.join(STORAGEDIR, destEntry, file),
-            utils.ifElseErr(callback, errCallback));
+function hashStoreFile(entry, pth, hash, callback, errCallback) {
+    var dest = ''+path.join(STORAGEDIR, entry, SUMDIR, ''+path.dirname(pth));
+    utils.mkdirp.sync(dest);
+    fs.writeFile(trace(''+path.join(dest, ''+path.basename(pth)), 'writeHAsh'),
+                 hashFile(pth),
+                 utils.ifElseErr(callback, errCallback));
+    return dest;
 }
 
-function updateFile(file, destEntry, callback, errCallback) {
+function storedFileHash(file) {
+    utils.debug('file: ',file);//DEBUG
+}
+
+function addNewFile(file, hash, destEntry, callback, errCallback) {
+    var done = 0;
+    function _callback() {
+        if (++done > 2)
+            callback.apply(this, arguments);
+    }
+
+    fs.copy(file, ''+path.join(STORAGEDIR, destEntry, file),
+            utils.ifElseErr(_callback, errCallback));
+    hashStoreFile(destEntry, file, hash, _callback, errCallback)
+}
+
+function updateFile(file, hash, destEntry, callback, errCallback) {
+    var done = 0;
+    function _callback() {
+        if (++done > 2)
+            callback.apply(this, arguments);
+    }
     var restored = ''+path.join(RESTOREDIR, file);
     restore(file, restored, function() {
-        jdiff.diff(restored, file, ''+path.join(destEntry, file+PATCHEXT),
+        jdiff.diff(restored,
+                   file,
+                   ''+path.join(STORAGEDIR, destEntry, file+PATCHEXT),
               function() {
                   fs.remove(restored);
-                  callback.apply(this, arguments);
+                  _callback
               }, errCallback);
     }, errCallback);
+    hashStoreFile(destEntry, file, hash, _callback, errCallback)
 }
 
 function addFile(file, destEntry, callback, errCallback) {
     var history = getFileHistory(file);
-    utils.debug('history', history);//DEBUG
-    if (!history.hasBase)
-        addNewFile(file, destEntry, callback, errCallback);
-    else if (!history.hasPatches)
-        jdiff.diff(history.base,
-                   trace(file, 'file'), 
-                   trace(''+path.join(''+destEntry, file+PATCHEXT), 'dest'),
-                   callback, errCallback);
-    else
-        updateFile(file, destEntry, callback, errCallback);
+    utils.debug('file: <<', file, '>>history', history);//DEBUG
+
+    const currHash = hashFile(file);
+    if (!history.hasBase) {
+        addNewFile(file, currHash, destEntry, callback, errCallback);
+    } else {
+        const oldHash = storedFileHash(history.newest);
+        if (!history.hasPatches) {
+            jdiff.diff(
+                history.base,
+                file,
+                ''+path.join(''+destEntry, file+PATCHEXT),
+                callback, errCallback);
+        } else {
+            updateFile(file, hash, destEntry, callback, errCallback);
+        }
+    }
 }
 
 function add(pth, destEntry, callback, errCallback) {
     if (!fs.statSync(pth).isDirectory())
-        addFile(pth, ''+path.join(STORAGEDIR, destEntry),
+        addFile(pth, destEntry,
                 callback, errCallback);
     else {
-        utils.mkdirp(''+path.join(STORAGEDIR, pth));
+        utils.mkdirp.sync(''+path.join(STORAGEDIR, pth));
         fs.readdir(pth, function(err, files) {
             if (err) {
                 return errCallback(err);
