@@ -48,7 +48,10 @@ var oldestEntry = R.compose(R.head, _entries);
 
 function hasPatch(entry, pth) {
     pth = utils.removeTrailing(pth, '/');
-    var paths = readDirWithPath(''+path.join(STORAGEDIR, entry));
+    const entryPath = ''+path.join(STORAGEDIR, entry);
+    var paths = readDirWithPath(entryPath)
+        .map(p => path.relative(entryPath, p));
+    utils.debug('hasPatch: paths:', paths, '...\n',pth+PATCHEXT); //DEBUG
     return (paths.indexOf(pth+PATCHEXT) !== -1);
 }
 
@@ -71,10 +74,10 @@ function getFileHistory(pth) {
     utils.debug('_entries', _entries());//DEBUG
     var history = _entries()
         .map(function (entry) {
-            if (hasFile(entry, pth))
-                return pth;
-            else if (hasPatch(entry, pth))
-                return patch;
+            if (hasFile(entry, pth) || hasPatch(entry, pth))
+                return { entry: entry,
+                    path: pth,
+                    full: ''+path.join(STORAGEDIR, entry, pth) };
             else
                 return null;
         })
@@ -82,13 +85,13 @@ function getFileHistory(pth) {
     const newest  = history.length > 2 ?
         history[history.length - 1] : history[0];
     const patches = history.slice(1);
-    return {
+    return trace({
         base: history[0],
         hasBase: (history[0] !== undefined),
         patches: patches,
         hasPatches: (patches[0] !== undefined),
         newest: newest
-    };
+    }, 'FileHistory');
 }
 
 function _getPatches(pth) {
@@ -103,9 +106,11 @@ function restoreFile(file, output, callback, errCallback) {
         return utils.error(`Can't find "${file}" in storage.`);
     var history = getFileHistory(file);
     if (!history.hasPatches)
-        fs.copy(history.base, output, utils.ifElseErr(callback, errCallback));
+        fs.copy(history.base.path, output,
+                utils.ifElseErr(callback, errCallback));
     else
-        jdiff.patchSeries(history.base, history.patches,
+        jdiff.patchSeries(history.base.path, history.patches.map(
+            h => ''+path.join(STORAGEDIR, h.entry, h.path)),
                           output, callback, errCallback);
 }
 
@@ -143,14 +148,16 @@ function hashFile(pth) {
 function hashStoreFile(entry, pth, hash, callback, errCallback) {
     var dest = ''+path.join(STORAGEDIR, entry, SUMDIR, ''+path.dirname(pth));
     utils.mkdirp.sync(dest);
-    fs.writeFile(trace(''+path.join(dest, ''+path.basename(pth)), 'writeHAsh'),
+    fs.writeFile(trace(''+path.join(dest, ''+path.basename(pth)), 'writeHash'),
                  hashFile(pth),
                  utils.ifElseErr(callback, errCallback));
     return dest;
 }
 
-function storedFileHash(file) {
-    utils.debug('file: ',file);//DEBUG
+function storedFileHash(file, entry) {
+    utils.debug('storedFileHash: file:',file, '..entry:', entry);//DEBUG
+    const pth = ''+path.join(STORAGEDIR, entry, SUMDIR, file);
+    return fs.readFileSync(pth).toString();
 }
 
 function addNewFile(file, hash, destEntry, callback, errCallback) {
@@ -166,6 +173,7 @@ function addNewFile(file, hash, destEntry, callback, errCallback) {
 }
 
 function updateFile(file, hash, destEntry, callback, errCallback) {
+    utils.debug(`updating "${file}"`);//DEBUG
     var done = 0;
     function _callback() {
         if (++done > 2)
@@ -192,15 +200,22 @@ function addFile(file, destEntry, callback, errCallback) {
     if (!history.hasBase) {
         addNewFile(file, currHash, destEntry, callback, errCallback);
     } else {
-        const oldHash = storedFileHash(history.newest);
+        const oldHash = storedFileHash(history.newest.path,
+                                       history.newest.entry);
+        utils.debug(`oldHash(`,oldHash,')<=>currHash(',currHash,')');//DEBUG
+        if (currHash === oldHash) { utils.debug('FILE NOT MODIFIED'); return; }
+        utils.debug('FILE CHANGED');//DEBUG
         if (!history.hasPatches) {
+            utils.debug('JDIFF('+
+                        history.base.full+',\n'+
+                        file+',\n'+pathkjoin(STORAGEDIR, destEntry, file+PATCHEXT)+',\n');//DEBUG
             jdiff.diff(
-                history.base,
+                history.base.full,
                 file,
-                ''+path.join(''+destEntry, file+PATCHEXT),
-                callback, errCallback);
+                ''+path.join(STORAGEDIR, destEntry, file+PATCHEXT),
+                function() { console.log('JDIFFcallback: '+''+path.join(STORAGEDIR, destEntry, file+PATCHEXT)); callback.apply(arguments); }, errCallback);
         } else {
-            updateFile(file, hash, destEntry, callback, errCallback);
+            updateFile(file, currHash, destEntry, callback, errCallback);
         }
     }
 }
