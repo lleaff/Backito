@@ -85,22 +85,23 @@ module.exports = {
 	lcl_back: function(dest, args, v, callback)
 	{
         const rev = cargs.revision || undefined;
-        console.log('arg{', args, '}');
-		console.log("local backup to :", dest);
+        utils.debug('arg{', args, '}');
         if (v !== 2) { return utils.debug('lcl_back: Need to implement preferences'); }
         var entry = new store();
 
         function restoreCallback() {
-            utils.debug('Added all paths');
             return callback.apply(this, arguments);
         }
         function storeCallback() {
             utils.debug('Storage finished, restoring...');
+            utils.debug('Added all paths');
             entry.restore(args, dest, restoreCallback);
         }
         if (cargs.restore) {
+            console.log("Restore stored files to :", dest);
             entry.restore(args, dest, rev, restoreCallback);
         } else {
+            console.log("Local backup to :", dest);
             entry.store(args, storeCallback, function() {
                 utils.error('Backup failed');
             });

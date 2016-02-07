@@ -28,8 +28,16 @@ const readDirWithPath = function (name, o) {
 // =Entries
 //------------------------------------------------------------
 
+function rndm(l) {
+    return Math.random()*Math.pow(10, l)>>0;
+}
+
 function newEntry() {
-    var dirname = ''+ENTRYPREFIX+utils.epoch();
+    var dirname = ''+ENTRYPREFIX+utils.epoch()+rndm(6);
+    var num = '';
+    while (utils.isDirectorySync(''+path.join(STORAGEDIR, dirname + num)))
+        num = Number(num) + 1;
+    dirname += num;
     fs.mkdirSync(STORAGEDIR+'/'+dirname);
     fs.mkdirSync(STORAGEDIR+'/'+dirname+'/'+SUMDIR);
     return dirname;
@@ -168,7 +176,7 @@ function getFileHistory(pth, rev) {
         patches: patches,
         hasPatches: (patches[0] !== undefined),
         newest: newest
-    }, 'FileHistory');
+    }, `FileHistory(rev:${rev})`, '>>>end');
 }
 
 function _getPatches(pth) {
@@ -183,8 +191,8 @@ function transferWithPath(pth, dest, callback, errCallback) {
     utils.debug('transfering...pth[', pth, ']\n\tdest[',dest,']');
     fs.move(dest, dest+'~', moveCallback);
     function moveCallback() {
-        fs.copy(trace(pth, 'trans-pth','/'),
-                trace(dest, 'trans-dest:','/'),
+        fs.copy(pth,
+                dest,
                 function(err, data) {
                     if (err) {
                         utils.debug('transfering..err:',err);
@@ -212,7 +220,7 @@ function patchWithPath(pth, patches, dest, callback, errCallback) {
  * @param rev - Optional
  */
 function restoreFile(file, output, rev, callback, errCallback) {
-    utils.debug('restoreFile: file:', file);//DEBUG
+    utils.debug('restoreFile: file:', file, '\n\trev: ',rev);//DEBUG
     if (typeof rev === 'function') {
         revCallback = callback; callback = rev; rev = undefined;
     }
@@ -221,16 +229,20 @@ function restoreFile(file, output, rev, callback, errCallback) {
     try {
         var history = getFileHistory(file, rev);
     } catch(e) {
+        utils.debug('getFileHistory failed: [', e, ']');//DEBUG
         if (e.name == ErrorUserInput.name)
             return (errCallback || utils.error(e.message)) &&
             errCallback(e.message);
     }
     utils.debug('hasPatcheshistory', history);//DEBUG
-    utils.debug('restoreFile:', file, '\n\toutput:', output, '\n\tdest:',dest);//DEBUG
+    utils.debug('restoreFile:', file,
+                '\n\toutput:', output,
+                '\n\tdest:',dest,
+                '\n\trev: .',rev,'. history:', history);//DEBUG
     const dest = ''+path.join(output, file);
     utils.mkdirp(''+path.dirname(dest), utils.ifElseErr(function() {
         if (!history.hasPatches)
-            transferWithPath(history.base.path,
+            transferWithPath(history.base && history.base.path,
                              dest,
                              callback, errCallback);
         else
@@ -241,16 +253,15 @@ function restoreFile(file, output, rev, callback, errCallback) {
     }), errCallback);
 }
 
-//NOT THIS
-
 /**
  * @param rev - Optional
  */
 function restore(pth, output, rev, callback, errCallback) {
+    utils.debug('restore: output:', output, ',..revbefore:',rev);//DEBUG
     if (typeof rev === 'function') {
         revCallback = callback; callback = rev; rev = undefined;
     }
-    utils.debug('restore: output:', output, ',..rev:',rev);//DEBUG
+    utils.debug('\t..revafter:',rev);//DEBUG
     if (!fs.statSync(pth).isDirectory())
         restoreFile(pth, output, rev, callback, errCallback);
     else {
@@ -263,6 +274,7 @@ function restore(pth, output, rev, callback, errCallback) {
 }
 
 function restoreFiles(paths, dest, rev, callback, errCallback) {
+    utils.debug('RESTOREFILES: rev:', rev);//DEBUG
     if (typeof rev === 'function') {
         revCallback = callback; callback = rev; rev = undefined;
     }

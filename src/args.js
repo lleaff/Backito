@@ -8,7 +8,7 @@ function check_only_one_time(argv, options) {
         return true;
 }
 
-const USAGE = 'Usage: $0 [-r | -recursive] path [...] [-d | -dest destination] [-s --seconds | -m --minutes | -h --hours num ]';
+const USAGE = 'Usage: $0 [-r | -recursive] path [...] [-d | -dest destination] [-s | -schedule crontab_string]';
 
 module.exports = require('yargs')
     .usage(USAGE)
@@ -19,7 +19,7 @@ module.exports = require('yargs')
     .boolean(['r', 'w'])
     .boolean('R')
     .alias('R', 'restore')
-    .alias('p', 'previous', 'revision', 'rev')
+    .alias('p', ['previous', 'revision', 'rev'])
     .implies('p', 'R')
     .nargs('d', 2)
     .alias('r', 'recursive')
