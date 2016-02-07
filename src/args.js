@@ -8,7 +8,7 @@ function check_only_one_time(argv, options) {
         return true;
 }
 
-const USAGE = 'Usage: $0 [-r | -recursive] path [...] [-d | -dest destination] [-s | -schedule crontab_string]';
+const USAGE = 'Usage: $0 [-r | -recursive] path [...] [-d | -dest destination] [-s --seconds | -m --minutes | -h --hours num ]';
 
 module.exports = require('yargs')
     .usage(USAGE)
