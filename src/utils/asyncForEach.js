@@ -8,6 +8,7 @@ module.exports = function asyncForEach(array, fn, callback) {
     var processedIndexes = [];
     array.forEach(function (val, i, arr) {
         fn(val, function() {
+            if (typeof callback !== 'function') { return; }
             processedIndexes[i] = true;
             if (array.every((_, i) => processedIndexes[i]))
                 callback();

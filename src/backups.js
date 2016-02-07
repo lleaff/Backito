@@ -96,10 +96,14 @@ module.exports = {
         }
         function storeCallback() {
             utils.debug('Storage finished, restoring...');
-            entry.restore(args, dest, rev);
+            entry.restore(args, dest, restoreCallback);
         }
-        entry.store(args, storeCallback, function() {
-            utils.error('Backup failed');
-        });
+        if (cargs.restore) {
+            entry.restore(args, dest, rev, restoreCallback);
+        } else {
+            entry.store(args, storeCallback, function() {
+                utils.error('Backup failed');
+            });
+        }
     }
 }

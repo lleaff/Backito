@@ -178,6 +178,36 @@ function _getPatches(pth) {
         .filter(utils.canReadwrite);
 }
 
+
+function transferWithPath(pth, dest, callback, errCallback) {
+    utils.debug('transfering...pth[', pth, ']\n\tdest[',dest,']');
+    fs.move(dest, dest+'~', moveCallback);
+    function moveCallback() {
+        fs.copy(trace(pth, 'trans-pth','/'),
+                trace(dest, 'trans-dest:','/'),
+                function(err, data) {
+                    if (err) {
+                        utils.debug('transfering..err:',err);
+                        callback();
+                    }
+                    copyCallback();
+                });
+    }
+    function copyCallback() {
+        fs.remove(dest+'~', callback);
+    }
+}
+
+
+function patchWithPath(pth, patches, dest, callback, errCallback) {
+    utils.debug('patching...pth[', pth, ']\n\tdest[',dest,']');
+    jdiff.patchSeries(pth,
+                      patches.map(h =>
+                        ''+path.join(STORAGEDIR, h.entry, h.path+PATCHEXT)),
+                      dest,
+                      callback, errCallback);
+}
+
 /**
  * @param rev - Optional
  */
@@ -193,19 +223,25 @@ function restoreFile(file, output, rev, callback, errCallback) {
     } catch(e) {
         if (e.name == ErrorUserInput.name)
             return (errCallback || utils.error(e.message)) &&
-                    errCallback(e.message);
+            errCallback(e.message);
     }
-    utils.debug('restoreFile:', file, '\n\toutput:', output);//DEBUG
     utils.debug('hasPatcheshistory', history);//DEBUG
-    if (!history.hasPatches)
-        fs.copy(history.base.path, output,
-                utils.ifElseErr(callback, errCallback));
-    else
-        jdiff.patchSeries(history.base.path,
-                          history.patches.map(
-                              h => ''+path.join(STORAGEDIR, h.entry, h.path+PATCHEXT)),
-                          output, callback, errCallback);
+    utils.debug('restoreFile:', file, '\n\toutput:', output, '\n\tdest:',dest);//DEBUG
+    const dest = ''+path.join(output, file);
+    utils.mkdirp(''+path.dirname(dest), utils.ifElseErr(function() {
+        if (!history.hasPatches)
+            transferWithPath(history.base.path,
+                             dest,
+                             callback, errCallback);
+        else
+            patchWithPath(history.base.path,
+                          history.patches,
+                          dest,
+                          callback, errCallback);
+    }), errCallback);
 }
+
+//NOT THIS
 
 /**
  * @param rev - Optional
@@ -214,40 +250,29 @@ function restore(pth, output, rev, callback, errCallback) {
     if (typeof rev === 'function') {
         revCallback = callback; callback = rev; rev = undefined;
     }
+    utils.debug('restore: output:', output, ',..rev:',rev);//DEBUG
     if (!fs.statSync(pth).isDirectory())
         restoreFile(pth, output, rev, callback, errCallback);
     else {
-        readDirWithPath(pth);
-        function mkdirpCallback() {
-            fs.readdir(pth, function(err, paths) {
-                if (err) {
-                    return errCallback(err);
-                }
-                utils.map(paths, function(file) {
-                    restoreFile(''+path.join(pth, file),
-                                ''+path.join(output, file),
-                                rev,
-                                ((_, cb) => cb() || _),
-                                    errCallback);
-                }, callback);
-            });
-        }
-        utils.mkdirp(''+path.join(output, dirname), mkdirpCallback);
+        utils.forEach(readDirWithPath(pth),
+                      function (p, cb) {
+                          return restoreFile(p, output, rev, cb);
+                      },
+                      callback);
     }
-
-    utils.forEach(readDirWithPath(pth),
-              function (p, cb) {
-                  return restoreFile(p, destEntry, cb);
-              },
-              callback);
 }
 
 function restoreFiles(paths, dest, rev, callback, errCallback) {
+    if (typeof rev === 'function') {
+        revCallback = callback; callback = rev; rev = undefined;
+    }
     utils.debug('restoreFiles dest{',dest,'}\npaths:{',paths,'}');//DEBUG
     utils.forEach(paths,
-                  (pth, cb) => restore(pth, ''+path.join(dest, pth), rev,
+                  (pth, cb) => restore(pth,
+                                       ''+path.join(dest),
+                                       rev,
                                        cb, errCallback),
-                  callback);
+                                       callback);
 }
 
 // =Add
@@ -264,7 +289,7 @@ function hashStoreFile(entry, pth, hash, callback, errCallback) {
     fs.writeFile(trace(''+path.join(dest, ''+path.basename(pth)), 'writeHash'),
                  hashFile(pth),
                  utils.ifElseErr(callback, errCallback));
-    return dest;
+                 return dest;
 }
 
 function storedFileHash(file, entry) {
@@ -282,7 +307,7 @@ function addNewFile(file, hash, destEntry, callback, errCallback) {
 
     fs.copy(file, ''+path.join(STORAGEDIR, destEntry, file),
             utils.ifElseErr(_callback, errCallback));
-    hashStoreFile(destEntry, file, hash, _callback, errCallback)
+            hashStoreFile(destEntry, file, hash, _callback, errCallback)
 }
 
 function updateFile(history, file, hash, destEntry, callback, errCallback) {
@@ -323,19 +348,19 @@ function addFile(file, destEntry, callback, errCallback) {
     } else {
         const oldHash = storedFileHash(history.newest.path,
                                        history.newest.entry);
-        if (currHash === oldHash) {
-            utils.debug('FILE NOT MODIFIED'); callback(); return;
-        }
-        utils.debug('FILE CHANGED');//DEBUG
-        updateFile(history, file, currHash, destEntry,
-                   callback, errCallback);
+                                       if (currHash === oldHash) {
+                                           utils.debug('FILE NOT MODIFIED'); callback(); return;
+                                       }
+                                       utils.debug('FILE CHANGED');//DEBUG
+                                       updateFile(history, file, currHash, destEntry,
+                                                  callback, errCallback);
     }
 }
 
 function add(pth, destEntry, callback, errCallback) {
     utils.forEach(readDirWithPath(pth),
-              (p, cb) => addFile(p, destEntry, cb),
-              callback);
+                  (p, cb) => addFile(p, destEntry, cb),
+                      callback);
 }
 
 function storeFiles(paths, callback, errCallback) {
@@ -345,13 +370,13 @@ function storeFiles(paths, callback, errCallback) {
         if (entryIsEmpty(currEntry))
             fs.remove(''+path.join(STORAGEDIR, currEntry),
                       utils.ifElseErr(callback, errCallback));
-        else
-            callback.apply(this, arguments);;
+                      else
+                          callback.apply(this, arguments);;
     }
 
     utils.forEach(paths,
                   (pth, cb) => add(pth, currEntry, cb, errCallback),
-                  storeFileCallback);
+                      storeFileCallback);
 }; 
 
 
