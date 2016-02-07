@@ -39,7 +39,7 @@ module.exports = {
 					        if (code === 0)
 							{
 								simpleGit.add(args);
-								simpleGit.commit('updated ' + args[i], args[i]],
+								simpleGit.commit('updated ' + args[i], args[i],
 								function(i, err, data) {
 								    console.log(args[i], "has been committed");
 									if (args.length > i + 1) 
