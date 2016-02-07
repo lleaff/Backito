@@ -3,6 +3,7 @@ var spawn = require('child_process').spawn;
 var utils = require('./utils');
 const ErrorUserInput = utils.errors.userInput;
 var svn = require('./svn_back');
+var git = require('./git_back');
 var store = require('./store');
 const cargs = require('./args');
 
@@ -76,11 +77,7 @@ module.exports = {
 
 		}
 	},
-	git_back: function(dest, args, v)
-	{
-		console.log("backup to git :", dest);
-		console.log(args);
-	},
+	git_back: git.git_back,
 	svn_back : svn.svn_back,
 	lcl_back: function(dest, args, v, callback)
 	{
