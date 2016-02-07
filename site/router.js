@@ -17,22 +17,6 @@ exports.get = function(req, res) {
     req.requrl = url.parse(req.url, true);
     var path = req.requrl.pathname;
     app.use('/', express.static( __dirname + '/views/theme'));
-    // app.use('/theme/css', express.static( __dirname + '/theme/css'));
-    // app.use('/theme/css', express.static( __dirname + '/theme/css'));
-    // if (/\.css$/.test(path)) 
-    // {
-    //     res.writeHead(200, {
-    //         'Content-Type': 'text/css'
-    //     });
-    //     fs.readFile(__dirname + path, 'utf8', function(err, data) {
-    //         if (err) throw err;
-    //         res.write(data, 'utf8');
-    //         res.end();
-    //     });
-    // }
-    // else
-    // {
-
     app.get('/', function(req, res) {
         res.render('index.html');
     });

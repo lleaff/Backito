@@ -16,14 +16,13 @@
     <link rel="stylesheet" href="bootstrap/css/bootstrap_def.css">
     <link rel="stylesheet" href="bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.4.0/css/font-awesome.min.css">
-    <link rel="stylesheet" href="js/colorpicker/bootstrap-colorpicker.min.css">
     <link rel="stylesheet" href="dist/css/bootstrap-select.css">
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css">
     <link rel="stylesheet" href="bootstrap/css/bootstrap_def.css">
-    <script src="js/appmin/app.min.js"></script>
+    <script src="app.min.js"></script>
     <script src="dist/js/bootstrap-select.js"></script> 
     <script src="./dropzone.js"></script>
-
+    <link rel="stylesheet" href="https://rawgit.com/enyo/dropzone/master/dist/dropzone.css">
     <!-- Bootstrap Core CSS -->
     <link href="css/bootstrap.min.css" rel="stylesheet">
 
@@ -54,7 +53,7 @@
                     <i class="fa fa-bars"></i>
                 </button>
                 <a class="navbar-brand page-scroll" href="#page-top">
-                    <i class="fa fa-play-circle"></i>  <span class="light">Start</span> Bootstrap
+                    <i class="fa fa-database"></i>  Back<span class="light">ito</span>
                 </a>
             </div>
 
@@ -66,10 +65,10 @@
                         <a href="#page-top"></a>
                     </li>
                     <li>
-                        <a class="page-scroll" href="#about">About</a>
+                        <a class="page-scroll" href="#about">Plateforms</a>
                     </li>
                     <li>
-                        <a class="page-scroll" href="#download">Download</a>
+                        <a class="page-scroll" href="#download">Backup</a>
                     </li>
                     <li>
                         <a class="page-scroll" href="#contact">Contact</a>
@@ -114,24 +113,24 @@
                             <div class="col-lg-10">
                                 <select id="basic" class="selectpicker show-tick form-control">
                                     <optgroup label="Distant or local machine">
-                                        <option>SSH</option>
-                                        <option class="get-class" disabled>FTP</option>
-                                        <option>Locale</option>
+                                        <option value="ssh">SSH</option>
+                                        <option class="get-class" disabled value="ftp">FTP</option>
+                                        <option value="lcl">Local</option>
                                     </optgroup>
                                     <optgroup label="Versionning">
-                                        <option>SVN</option>
-                                        <option>GIT</option>
+                                        <option value="svn">SVN</option>
+                                        <option value="git">GIT</option>
                                     </optgroup>
                                 </select>
                             </div>
                         </div>
                         <div class="col-xs-6">
                         <label style="color:black;">Link/Ip Adress</label>
-                        <input name="nb2" pattern="^[0-9]{1,}$" type="text" class="form-control" placeholder="Ex: 192.168.53.30"  style="margin:0 auto;text-align:center">
+                        <input id="address" pattern="" type="text" class="form-control" placeholder="Ex: 192.168.53.30" style="margin:0 auto;text-align:center">
                         </div>
                     </div>
                   </div>
-                 <center><input id="Add" value=" Add " type="submit" class="btn btn-default btn-flat btn" href="" style="margin-top:10px; margin-bottom:10px; background-color:white"><i class="fa fa-check"></i></input></center>
+                 <center><input id="add_dest" value=" Add " type="submit" class="btn btn-default btn-flat btn" href="" style="margin-top:10px; margin-bottom:10px; background-color:white"><i class="fa fa-check"></i></input></center>
             </div>
             <div class="box box-success" style="max-width:600px; margin:0 auto; margin-bottom:20px">
                   <div class="box-header with-border">
@@ -140,16 +139,18 @@
                   <div class="box-body">
                     <div class="row">
                         <div class="col-xs-6">
-                            <label style="color:black;">Link/Ip Adress</label>
-                            <form action="" class="dropzone">
+                            <center>
+                            <label style="color:black;">Select a file or a directory</label>
+                            <form action="javascript:void(0);" class="dropzone">
                               <div class="fallback">
                                 <input name="file" type="file" multiple />
                               </div>
                             </form>
+                            </center>
                         </div>
                     </div>
                   </div>
-                 <center><input id="Add" value=" Add " type="submit" class="btn btn-default btn-flat btn" href="" style="margin-top:10px; margin-bottom:10px; background-color:white"><i class="fa fa-check"></i></input></center>
+                 <center><input id="add_file" value=" Add " type="submit" class="btn btn-default btn-flat btn" href="" style="margin-top:10px; margin-bottom:10px; background-color:white"><i class="fa fa-check"></i></input></center>
             </div>                   
             </div>
         </div>
@@ -159,10 +160,9 @@
     <section id="download" class="content-section text-center">
         <div class="download-section">
             <div class="container">
-                <div class="col-lg-8 col-lg-offset-2">
-                    <h2>Selected destinations</h2>
-                    <p>You can download Grayscale for free on the preview page at Start Bootstrap.</p>
-                    <a href="http://startbootstrap.com/template-overviews/grayscale/" class="btn btn-default btn-lg">Visit Download Page</a>
+                <div class="col-lg-8 col-lg-offset-2" id="destinations">
+                    <h2 id="desti">Selected destinations</h2>
+                    <button id="backup" class="btn btn-default btn-lg" disabled>Back up</button>
                 </div>
             </div>
         </div>
@@ -172,10 +172,8 @@
     <section id="contact" class="container content-section text-center">
         <div class="row">
             <div class="col-lg-8 col-lg-offset-2">
-                <h2>Contact Start Bootstrap</h2>
-                <p>Feel free to email us to provide some feedback on our templates, give us suggestions for new templates and themes, or to just say hello!</p>
-                <p><a href="mailto:feedback@startbootstrap.com">feedback@startbootstrap.com</a>
-                </p>
+                <h2>Logs</h2>
+                <p>fdjks</p>
                 <ul class="list-inline banner-social-buttons">
                     <li>
                         <a href="https://twitter.com/SBootstrap" class="btn btn-default btn-lg"><i class="fa fa-twitter fa-fw"></i> <span class="network-name">Twitter</span></a>
@@ -193,10 +191,57 @@
     <!-- Footer -->
     <footer>
         <div class="container text-center">
-            <p>Copyright &copy; Your Website 2014</p>
+            <p>Copyright &copy; Backito 2016</p>
         </div>
     </footer>
+    <script type="text/javascript">
+    $("input#add_dest").click(function(){
+        var dest = $("input#address").val();
+        var type = $("select#basic").val();
+        $("input#address").val("");
+        $("select#basic").prop('selectedIndex',0);
+        if (document.getElementById(type) === null)
+        {
+            $("h2#desti").after($("<dl>").attr("id", type));
+            $("dl#" + type).append("<dt>" + type + "</dt>");
+            $("dl#" + type).append($("<hr>").attr("width", '30%'));
+        }
+        $("dl#" + type + ' hr').before($("<dd>" + dest + "</dd>").append('<i class="fa fa-times fa-2x remove" style="color:#42dca3; size:15pt"></i>'));
+        $(".remove").click(function()
+        {
+            var tmp = $(this).parent();
+            if ((tmp.parent().children()).length === 3)
+            {
+                if (tmp.parent().parent().children().length === 3)
+                    $("button#backup").prop( "disabled", true);
+                tmp.parent().remove();
+            }
+            else
+                tmp.remove();
+ 
+        });
+        $("button#backup").prop( "disabled", false);
+    });
 
+    $("input#add_file").click(function(){
+        //todo: recuperer le chemin des fichier uploaded
+    });
+
+    $("button#backup").click(function(){
+        var arr = $(this).parent().children("dl").toArray();
+        var result = [];
+        for ( var i = 0, l = arr.length; i < l; i++ ) {
+            var obj = { ptc: $(arr[i]).attr("id"),
+                        dest: [] 
+                        };
+            var dests = $(arr[i]).children("dd").toArray();
+            for ( var j = 0, l2 = dests.length; j < l2; j++ ) {
+                obj.dest[j] = $(dests[j]).text();
+            }
+            result.push(obj);
+        }
+    });
+    </script>
     <!-- jQuery -->
     <script src="js/jquery.js"></script>
 
@@ -205,9 +250,6 @@
 
     <!-- Plugin JavaScript -->
     <script src="js/jquery.easing.min.js"></script>
-
-    <!-- Google Maps API Key - Use your own API key to enable the map feature. More information on the Google Maps API can be found at https://developers.google.com/maps/ -->
-    <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCRngKslUGJTlibkQ3FkfTxj3Xss1UlZDA&sensor=false"></script>
 
     <!-- Custom Theme JavaScript -->
     <script src="js/grayscale.js"></script>

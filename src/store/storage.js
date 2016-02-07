@@ -237,8 +237,8 @@ function restore(pth, output, rev, callback, errCallback) {
 
     utils.forEach(readDirWithPath(pth),
               function (p, cb) {
-                  restoreFile(p, destEntry, cb);
-              }
+                  return restoreFile(p, destEntry, cb);
+              },
               callback);
 }
 
