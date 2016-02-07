@@ -44,10 +44,24 @@ var newestEntry = R.compose(R.last, _entries);
 var oldestEntry = R.compose(R.head, _entries);
 
 function entryIsEmpty(entry) {
-    if (trace(readDirWithPath(''+path.join(STORAGEDIR, entry)), 'empty?{', '}').length === 0)
-        return true;
+    return readDirWithPath(''+path.join(STORAGEDIR, entry)).length === 0;
+}
+
+function entryNameToNum(entry) {
+    if (typeof entry === 'string' &&
+        entry.substr(0, ENTRYPREFIX.length) === ENTRYPREFIX)
+        return entry.substr(ENTRYPREFIX.length) >>0;
     else
-        return false;
+        return entry;
+}
+
+function entriesUpTo(entries, rev) {
+    rev = 's_' + entryNameToNum(rev);
+    for (var i = 0; i < entries.length; i++) {
+        if (entries[i] === rev)
+            return entries(0, i);
+    }
+    return false;
 }
 
 // =Test entry
@@ -74,11 +88,55 @@ function hasFile(entry, pth) {
     return (paths.indexOf(pth) !== -1);
 }
 
+// =Revision
+//------------------------------------------------------------
+
+function isParentSymbol(c) {
+    return c === '^' || c === '~';
+}
+
+function revToFromHeadFormat(rev) {
+    const HEAD = 'HEAD';
+    if (rev.substr(0, HEAD.length) === HEAD) rev = rev.substr(HEAD.length);
+    var back = 0;
+    for (var i = 0, n = 0; i < rev.length; i++, n = 0) {
+        if (isParentSymbol(rev[i])) {
+            if (i + 1 >= rev.length || isParentSymbol(rev[i + 1])) {
+                n = 1;
+            } else {
+                for (i = i + 1; i < rev.length; i++) {
+                    if (!isNaN(rev[i]))
+                        n = n * 10 + rev[i] >>0;
+                    else {
+                        i--;
+                        break;
+                    }
+                }
+            }
+            back += n;
+        }
+    }
+    return back;
+}
+
+function filterEntriesByRev(entries, rev) {
+    if (utils.isInt(rev)) {
+        const finalEntry = 's_'+rev;
+        entries = entriesUpTo(entries, rev);
+        return entries ? entries :
+                         utils.error(`Revision ${rev} doesn't exist.`);
+    } else {
+        rev = revToFromHeadFormat(rev);
+    }
+}
+
 // =History
 //------------------------------------------------------------
 
-function getFileHistory(pth) {
-    var history = _entries()
+function getFileHistory(pth, rev) {
+    var entries = filterEntriesByRev(_entries(), rev);
+    
+    var history = entries
         .map(function (entry) {
             if (hasFile(entry, pth))
                 return { entry: entry,
@@ -111,10 +169,10 @@ function _getPatches(pth) {
         .filter(utils.canReadwrite);
 }
 
-function restoreFile(file, output, callback, errCallback) {
+function restoreFile(file, output, rev, callback, errCallback) {
     if (!utils.canReadwrite(STORAGEDIR))
         return utils.error(`Can't find "${file}" in storage.`);
-    var history = getFileHistory(file);
+    var history = getFileHistory(file, rev);
     utils.debug('restoreFile:', file, '\n\toutput:', output);//DEBUG
     if (!history.hasPatches)
         fs.copy(history.base.path, output,
@@ -126,9 +184,9 @@ function restoreFile(file, output, callback, errCallback) {
                           output, callback, errCallback);
 }
 
-function restore(pth, output, callback, errCallback) {
+function restore(pth, output, rev, callback, errCallback) {
     if (!fs.statSync(pth).isDirectory())
-        restoreFile(pth, output, callback, errCallback);
+        restoreFile(pth, output, rev, callback, errCallback);
     else {
         var dirname = ''+path.basename(pth);
         fs.mkdir(''+path.join(output, dirname), errCallback);
@@ -140,6 +198,7 @@ function restore(pth, output, callback, errCallback) {
             utils.map(files, function(file) {
                 restoreFile(''+path.join(pth, file),
                             ''+path.join(output, file),
+                            rev,
                             ((_, cb) => cb() || _),
                             errCallback);
                 /* TODO: verify that callback is actually called *after*
@@ -147,6 +206,13 @@ function restore(pth, output, callback, errCallback) {
             }, callback);
         });
     }
+}
+
+function restoreFiles(paths, dest, callback, errCallback) {
+    utils.forEach(paths,
+                  (pth, cb) => restore(pth, ''+path.join(dest, pth),
+                                       cb, errCallback),
+                  callback);
 }
 
 // =Add
@@ -189,7 +255,6 @@ function updateFile(history, file, hash, destEntry, callback, errCallback) {
     function _callback() {
         if (++done >= 2)
             callback.apply(this, arguments);
-
     }
     var restored = ''+path.join(RESTOREDIR, file);
 
@@ -262,7 +327,6 @@ var basicExport = {
     newEntry,
     add,
     restore,
-    entryIsEmpty
 };
 
 module.exports = function BackupEntry() {
@@ -278,9 +342,7 @@ module.exports = function BackupEntry() {
     }; 
 
     this.store = storeFiles;
-    this.restore = function(paths, callback, errCallback) {
-
-    };
+    this.restore = restoreFiles;
 };
 
 Object.assign(module.exports, basicExport);
