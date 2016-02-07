@@ -1,6 +1,7 @@
 var scp = require('scp');
 var spawn = require('child_process').spawn;
 var utils = require('./utils');
+const ErrorUserInput = utils.errors.userInput;
 var svn = require('./svn_back');
 var store = require('./store');
 
@@ -84,14 +85,19 @@ module.exports = {
 	{
 		console.log("local backup to :", dest);
         if (v !== 2) { return utils.debug('lcl_back: Need to implement preferences'); }
-
         var entry = new store();
-        entry.store(args, function() {
+
+        function restoreCallback() {
+            utils.debug('Added all paths');
+            return callback.apply(this, arguments)
+        }
+        function storeCallback() {
             utils.forEach(args, function(arg) {
-                entry.restore(arg, dest);
-            }, function() {
-                utils.debug('Added all paths');
-                return callback.apply(this, arguments)});
+                entry.restore(arg, dest, rev);
+            }, restoreCallback);
+        }
+        entry.store(args, storeCallback, function() {
+            utils.error('Backup failed');
         });
     }
 }

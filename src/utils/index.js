@@ -6,6 +6,7 @@ module.exports = {
     canReadwrite: require('./canReadwrite'),
     epoch: require('./epoch'),
     error: require('./error'),
+    errors: require('./errors'),
     removeTrailing: require('./removeTrailing.js'),
     ifElseErr: require('./ifElseErr.js'),
     hash: require('./hash'),
