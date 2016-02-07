@@ -78,12 +78,6 @@ function check_dest(path)
 		return ("svn");
 }
 
-if (argv.w)
-	wizard();
-else
-	cron_backito();
-
-
 function cron_backito()
 {
 	var time = [ 's', 'm', 'h'];
@@ -137,3 +131,14 @@ function backito()
 		}
 	});
 }
+
+
+// =Execution
+//------------------------------------------------------------
+
+if (argv.S)
+    require('./site/server')(argv.S);
+else if (argv.w)
+	wizard.menu();
+else
+	cron_backito();

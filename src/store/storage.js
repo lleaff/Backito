@@ -391,7 +391,6 @@ function storeFiles(paths, callback, errCallback) {
                       storeFileCallback);
 }; 
 
-
 // =Export
 //------------------------------------------------------------
 
@@ -405,6 +404,7 @@ var basicExport = {
 
 module.exports = function BackupEntry() {
     Object.assign(this, basicExport);
+
     this.newestEntry = newestEntry; //DEBUG
     this.oldestEntry = oldestEntry; //DEBUG
     this._getPatches = _getPatches; //DEBUG
