@@ -4,6 +4,7 @@ module.exports = {
     map: require('./asyncMap'),
     find: require('./find'),
     canReadwrite: require('./canReadwrite'),
+    isDirectorySync: require('./isDirectorySync'),
     epoch: require('./epoch'),
     error: require('./error'),
     errors: require('./errors'),
