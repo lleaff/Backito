@@ -182,6 +182,7 @@ function _getPatches(pth) {
  * @param rev - Optional
  */
 function restoreFile(file, output, rev, callback, errCallback) {
+    utils.debug('restoreFile: file:', file);//DEBUG
     if (typeof rev === 'function') {
         revCallback = callback; callback = rev; rev = undefined;
     }
@@ -195,6 +196,7 @@ function restoreFile(file, output, rev, callback, errCallback) {
                     errCallback(e.message);
     }
     utils.debug('restoreFile:', file, '\n\toutput:', output);//DEBUG
+    utils.debug('hasPatcheshistory', history);//DEBUG
     if (!history.hasPatches)
         fs.copy(history.base.path, output,
                 utils.ifElseErr(callback, errCallback));
@@ -215,24 +217,33 @@ function restore(pth, output, rev, callback, errCallback) {
     if (!fs.statSync(pth).isDirectory())
         restoreFile(pth, output, rev, callback, errCallback);
     else {
-        var dirname = ''+path.basename(pth);
-        fs.mkdir(''+path.join(output, dirname), errCallback);
-        fs.readdir(pth, function(err, paths) {
-            if (err) {
-                return errCallback(err);
-            }
-            utils.map(files, function(file) {
-                restoreFile(''+path.join(pth, file),
-                            ''+path.join(output, file),
-                            rev,
-                            ((_, cb) => cb() || _),
-                            errCallback);
-            }, callback);
-        });
+        readDirWithPath(pth);
+        function mkdirpCallback() {
+            fs.readdir(pth, function(err, paths) {
+                if (err) {
+                    return errCallback(err);
+                }
+                utils.map(paths, function(file) {
+                    restoreFile(''+path.join(pth, file),
+                                ''+path.join(output, file),
+                                rev,
+                                ((_, cb) => cb() || _),
+                                    errCallback);
+                }, callback);
+            });
+        }
+        utils.mkdirp(''+path.join(output, dirname), mkdirpCallback);
     }
+
+    utils.forEach(readDirWithPath(pth),
+              function (p, cb) {
+                  restoreFile(p, destEntry, cb);
+              }
+              callback);
 }
 
 function restoreFiles(paths, dest, rev, callback, errCallback) {
+    utils.debug('restoreFiles dest{',dest,'}\npaths:{',paths,'}');//DEBUG
     utils.forEach(paths,
                   (pth, cb) => restore(pth, ''+path.join(dest, pth), rev,
                                        cb, errCallback),
@@ -330,15 +341,17 @@ function add(pth, destEntry, callback, errCallback) {
 function storeFiles(paths, callback, errCallback) {
     var currEntry = newEntry();
 
-    function cleanCurrEntry() {
+    function storeFileCallback() {
         if (entryIsEmpty(currEntry))
             fs.remove(''+path.join(STORAGEDIR, currEntry),
                       utils.ifElseErr(callback, errCallback));
+        else
+            callback.apply(this, arguments);;
     }
 
     utils.forEach(paths,
                   (pth, cb) => add(pth, currEntry, cb, errCallback),
-                  cleanCurrEntry);
+                  storeFileCallback);
 }; 
 
 

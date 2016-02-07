@@ -4,6 +4,7 @@ var utils = require('./utils');
 const ErrorUserInput = utils.errors.userInput;
 var svn = require('./svn_back');
 var store = require('./store');
+const cargs = require('./args');
 
 
 function parse_ssh(str, callback)
@@ -83,18 +84,19 @@ module.exports = {
 	svn_back : svn.svn_back,
 	lcl_back: function(dest, args, v, callback)
 	{
+        const rev = cargs.revision || undefined;
+        console.log('arg{', args, '}');
 		console.log("local backup to :", dest);
         if (v !== 2) { return utils.debug('lcl_back: Need to implement preferences'); }
         var entry = new store();
 
         function restoreCallback() {
             utils.debug('Added all paths');
-            return callback.apply(this, arguments)
+            return callback.apply(this, arguments);
         }
         function storeCallback() {
-            utils.forEach(args, function(arg) {
-                entry.restore(arg, dest, rev);
-            }, restoreCallback);
+            utils.debug('Storage finished, restoring...');
+            entry.restore(args, dest, rev);
         }
         entry.store(args, storeCallback, function() {
             utils.error('Backup failed');
