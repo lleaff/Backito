@@ -138,7 +138,16 @@ function backito()
 
 if (argv.S)
     require('./site/server')(argv.S);
-else if (argv.w)
+else if (argv.patch) {
+    const store = require('./src/store');
+    store.simpleRestore(argv.patch[0], argv.patch[1], argv._[2],
+                       function () {
+                           console.log('Patching succeeded.');
+                       }, function (err) {
+                           console.log('Patching failed'+
+                                       (err ? ': Error ['+err+']' : '.'));
+                       });
+} else if (argv.w)
 	wizard.menu();
 else
 	cron_backito();

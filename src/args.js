@@ -33,5 +33,6 @@ module.exports = require('yargs')
     .alias('S', 'server')
     .boolean('D')
     .alias('D', 'debug')
+    .nargs('patch', 2)
     .check(check_only_one_time)
     .argv;

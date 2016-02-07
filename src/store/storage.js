@@ -234,11 +234,6 @@ function restoreFile(file, output, rev, callback, errCallback) {
             return (errCallback || utils.error(e.message)) &&
             errCallback(e.message);
     }
-    utils.debug('hasPatcheshistory', history);//DEBUG
-    utils.debug('restoreFile:', file,
-                '\n\toutput:', output,
-                '\n\tdest:',dest,
-                '\n\trev: .',rev,'. history:', history);//DEBUG
     const dest = ''+path.join(output, file);
     utils.mkdirp(''+path.dirname(dest), utils.ifElseErr(function() {
         if (!history.hasPatches)
@@ -250,6 +245,16 @@ function restoreFile(file, output, rev, callback, errCallback) {
                           history.patches,
                           dest,
                           callback, errCallback);
+    }), errCallback);
+}
+
+function simpleRestore(file, output, patch, callback, errCallback) {
+    const dest = ''+path.join(output, file);
+    utils.mkdirp(''+path.dirname(dest), utils.ifElseErr(function() {
+        jdiff.patch(file,
+                    patch,
+                    output,
+                    callback, errCallback);
     }), errCallback);
 }
 
@@ -400,6 +405,7 @@ var basicExport = {
     newEntry,
     add,
     restore,
+    simpleRestore
 };
 
 module.exports = function BackupEntry() {
