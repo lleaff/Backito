@@ -13,6 +13,8 @@ const USAGE = 'Usage: $0 [-r | -recursive] path [...] [-d | -dest destination] [
 module.exports = require('yargs')
     .usage(USAGE)
     .demand(1)
+    .boolean('w')
+    .alias('w', 'wizard')
     .nargs('s', 1)
     .nargs('m', 1)
     .nargs('h', 1)

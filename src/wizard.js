@@ -31,7 +31,6 @@ function menu()
   destinations.push(serv());
   break;
 }
-
 console.log(destinations)
 }
 

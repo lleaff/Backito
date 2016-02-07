@@ -6,6 +6,7 @@ var utils = require('./src/utils');
 var back  = require('./src/backups.js');
 var cron  = require('./src/timefunc.js');
 var argv  = require('./src/args');
+var wizard = require('./src/wizard.js');
 
 function check_info(path)
 {
@@ -71,7 +72,10 @@ function check_dest(path)
 		return ("svn");
 }
 
-cron_backito();
+if (argv.w)
+	wizard.menu();
+else
+	cron_backito();
 
 
 function cron_backito()
