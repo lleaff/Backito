@@ -33,9 +33,10 @@ function backs(i, path, args, v, callback)
 	    console.log("Unrecognized type of backup destination.");
 }
 
-function get_config(cfg, callback)
+function get_config(args, v)
 {
-
+	data = require('./resources/config_default.json');
+	
 }
 
 function backup(path, v, args)
@@ -43,8 +44,7 @@ function backup(path, v, args)
 	if (v == 1)
 	{
 		console.log("starting backup from config_default");
-
-		
+		get_config(args, v);		
 	}
 	else if (v == 2)
 	{

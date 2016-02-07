@@ -18,13 +18,13 @@
     	},
     	{
     		"type" : "svn",
-    		"host" : "192.168.53.30",
+    		"host" : "https://rendu-svn.etna-alternance.net/v1/SDC-UNIX/003/2020_Prep'ETNA_SDC-UNIX_3_0/Decouverte%20de%20Linux/amira_s/",
     		"user" : "amira_s",
     		"path" : ""    		
     	},
     	{
     		"type" : "git",
-    		"host" : "192.168.53.30",
+    		"host" : "https://github.com/lleaff/Backito.git",
     		"user" : "amira_s",
     		"path" : ""    		
     	}
