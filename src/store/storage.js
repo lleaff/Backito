@@ -1,14 +1,24 @@
-const fs = require('fs-extra');
-const path = require('path');
+const fs = require('fs-extra');const path = require('path');
 const cfg = require('../config');
 const utils = require('../utils');
+const ErrorUserInput = utils.errors.userInput;
+const trace = utils.trace;
 const R = require('ramda');
 const jdiff = require('jdiff-node');
 
 const ENTRYPREFIX = 's_';
-const PATCHEXT = '.patch';
+const PATCHEXT = '.bak_patch';
 const STORAGEDIR = cfg.storageDir;
-const RESTOREDIR = path.join(STORAGEDIR, 'restored');
+const RESTOREDIR = ''+path.join(STORAGEDIR, 'restored');
+const SUMDIR = '.bak_sums';
+const SUMDIRREGEX = new RegExp('\\.bak_sums\/');
+
+const readDirWithPath = function (name, o) {
+    utils.debug('readDir:name', name);//DEBUG
+    if (o === undefined) o = {};
+    o.type = 'f';
+    return utils.find(name, o);
+};
 
 (function _initStorageDir() {
     [STORAGEDIR, RESTOREDIR]
@@ -19,8 +29,9 @@ const RESTOREDIR = path.join(STORAGEDIR, 'restored');
 //------------------------------------------------------------
 
 function newEntry() {
-    var dirname = ''+utils.epoch();
+    var dirname = ''+ENTRYPREFIX+utils.epoch();
     fs.mkdirSync(STORAGEDIR+'/'+dirname);
+    fs.mkdirSync(STORAGEDIR+'/'+dirname+'/'+SUMDIR);
     return dirname;
 }
 
@@ -33,43 +44,131 @@ function _entries() {
 var newestEntry = R.compose(R.last, _entries);
 var oldestEntry = R.compose(R.head, _entries);
 
+function entryIsEmpty(entry) {
+    return readDirWithPath(''+path.join(STORAGEDIR, entry)).length === 0;
+}
+
+function entryNameToNum(entry) {
+    if (typeof entry === 'string' &&
+        entry.substr(0, ENTRYPREFIX.length) === ENTRYPREFIX)
+        return entry.substr(ENTRYPREFIX.length) >>0;
+    else
+        return entry;
+}
+
+function entriesUpTo(entries, rev) {
+    rev = 's_' + entryNameToNum(rev);
+    for (var i = 0; i < entries.length; i++) {
+        if (entries[i] === rev)
+            return entries(0, i);
+    }
+    return false;
+}
+
 // =Test entry
 //------------------------------------------------------------
 
 function hasPatch(entry, pth) {
     pth = utils.removeTrailing(pth, '/');
-    var paths = fs.readdirSync(entry);
+    const entryPath = ''+path.join(STORAGEDIR, entry);
+    var paths = readDirWithPath(entryPath)
+        .map(p => path.relative(entryPath, p));
+    utils.debug('hasPatch: paths:', paths, '...\n',pth+PATCHEXT); //DEBUG
     return (paths.indexOf(pth+PATCHEXT) !== -1);
 }
 
 function hasFile(entry, pth) {
     pth = utils.removeTrailing(pth, '/');
-    var paths = fs.readdirSync(entry);
+    var dir = ''+path.join(STORAGEDIR, ''+entry);
+    var paths = readDirWithPath(dir)
+        .map(pth => ''+path.relative(dir, pth))
+        .filter(pth => !SUMDIRREGEX.test(pth));
+
+    utils.debug('paths', paths);
+    utils.debug('pth', pth);
     return (paths.indexOf(pth) !== -1);
+}
+
+// =Revision
+//------------------------------------------------------------
+
+function isParentSymbol(c) {
+    return c === '^' || c === '~';
+}
+
+function revToFromHeadFormat(rev) {
+    const HEAD = 'HEAD';
+    if (rev.substr(0, HEAD.length) === HEAD) rev = rev.substr(HEAD.length);
+    var back = 0;
+    for (var i = 0, n = 0; i < rev.length; i++, n = 0) {
+        if (isParentSymbol(rev[i])) {
+            if (i + 1 >= rev.length || isParentSymbol(rev[i + 1])) {
+                n = 1;
+            } else {
+                for (i = i + 1; i < rev.length; i++) {
+                    if (!isNaN(rev[i]))
+                        n = n * 10 + rev[i] >>0;
+                    else {
+                        i--;
+                        break;
+                    }
+                }
+            }
+            back += n;
+        }
+    }
+    return back;
+}
+
+function filterEntriesByRev(entries, rev) {
+    if (rev === undefined) {
+        return entries;
+    } else if (utils.isInt(rev)) {
+        const finalEntry = 's_'+rev;
+        entries = entriesUpTo(entries, rev);
+        if (entries)
+            return entries;
+        else
+            throw new ErrorUserInput(`Revision ${rev} doesn't exist.`);
+    } else {
+        rev = revToFromHeadFormat(rev);
+        return entries.slice(0, entries.length - rev);
+    }
+    throw new ErrorUserInput(`Revision format not recognized: "${rev}"`);
 }
 
 // =History
 //------------------------------------------------------------
 
-function getFileHistory(pth) {
-    var history = _entries()
-        .reverse()
+function getFileHistory(pth, rev) {
+    entries = filterEntriesByRev(_entries(), rev);
+    if (!entries) { return false; }
+    
+    var history = entries
         .map(function (entry) {
             if (hasFile(entry, pth))
-                return pth;
-            else if (hasPatch(entry, pth))
-                return patch;
+                return { entry: entry,
+                         path: pth,
+                         full: ''+path.join(STORAGEDIR, entry, pth) };
+            if (hasPatch(entry, pth))
+                return { entry: entry,
+                         path: pth,
+                         full: ''+path.join(STORAGEDIR, entry, pth+PATCHEXT) };
             else
                 return null;
         })
         .filter(x => x);
-    var patches = history.slice(1);
-    return {
+
+    const newest  = history.length > 2 ?
+        history[history.length - 1] : history[0];
+    const patches = history.slice(1);
+    return trace({
         base: history[0],
-        hasBase: (history[0] === undefined),
+        hasBase: (history[0] !== undefined),
         patches: patches,
-        hasPatches: (patches[0] !== undefined)
-    };
+        hasPatches: (patches[0] !== undefined),
+        newest: newest
+    }, 'FileHistory');
 }
 
 function _getPatches(pth) {
@@ -79,90 +178,182 @@ function _getPatches(pth) {
         .filter(utils.canReadwrite);
 }
 
-function restoreFile(file, output, callback, errCallback) {
+/**
+ * @param rev - Optional
+ */
+function restoreFile(file, output, rev, callback, errCallback) {
+    utils.debug('restoreFile: file:', file);//DEBUG
+    if (typeof rev === 'function') {
+        revCallback = callback; callback = rev; rev = undefined;
+    }
     if (!utils.canReadwrite(STORAGEDIR))
         return utils.error(`Can't find "${file}" in storage.`);
-    var history = getFileHistory(file);
+    try {
+        var history = getFileHistory(file, rev);
+    } catch(e) {
+        if (e.name == ErrorUserInput.name)
+            return (errCallback || utils.error(e.message)) &&
+                    errCallback(e.message);
+    }
+    utils.debug('restoreFile:', file, '\n\toutput:', output);//DEBUG
+    utils.debug('hasPatcheshistory', history);//DEBUG
     if (!history.hasPatches)
-        fs.copy(history.base, output, utils.ifElseErr(callback, errCallback));
+        fs.copy(history.base.path, output,
+                utils.ifElseErr(callback, errCallback));
     else
-        jdiff.patchSeries(history.base, history.patches,
+        jdiff.patchSeries(history.base.path,
+                          history.patches.map(
+                              h => ''+path.join(STORAGEDIR, h.entry, h.path+PATCHEXT)),
                           output, callback, errCallback);
 }
 
-function restore(pth, output, callback, errCallback) {
-    if (!fs.statSync(pth).isDirectory())
-        restoreFile(pth, output, callback, errCallback);
-    else {
-        var dirname = path.basename(pth);
-        fs.mkdir(path.join(output, dirname), errCallback);
-        fs.readdir(pth, function(err, paths) {
-            if (err) {
-                console.error('DEBUG: restore: err:', err); //DEBUG
-                return errCallback(err);
-            }
-            utils.map(files, function(file) {
-                restoreFile(path.join(pth, file),
-                            path.join(output, file),
-                            (_ => _),
-                            errCallback);
-                /* TODO: verify that callback is actually called *after*
-                   everything is processed */
-            }, callback);
-        });
+/**
+ * @param rev - Optional
+ */
+function restore(pth, output, rev, callback, errCallback) {
+    if (typeof rev === 'function') {
+        revCallback = callback; callback = rev; rev = undefined;
     }
+    if (!fs.statSync(pth).isDirectory())
+        restoreFile(pth, output, rev, callback, errCallback);
+    else {
+        readDirWithPath(pth);
+        function mkdirpCallback() {
+            fs.readdir(pth, function(err, paths) {
+                if (err) {
+                    return errCallback(err);
+                }
+                utils.map(paths, function(file) {
+                    restoreFile(''+path.join(pth, file),
+                                ''+path.join(output, file),
+                                rev,
+                                ((_, cb) => cb() || _),
+                                    errCallback);
+                }, callback);
+            });
+        }
+        utils.mkdirp(''+path.join(output, dirname), mkdirpCallback);
+    }
+
+    utils.forEach(readDirWithPath(pth),
+              function (p, cb) {
+                  restoreFile(p, destEntry, cb);
+              }
+              callback);
+}
+
+function restoreFiles(paths, dest, rev, callback, errCallback) {
+    utils.debug('restoreFiles dest{',dest,'}\npaths:{',paths,'}');//DEBUG
+    utils.forEach(paths,
+                  (pth, cb) => restore(pth, ''+path.join(dest, pth), rev,
+                                       cb, errCallback),
+                  callback);
 }
 
 // =Add
 //------------------------------------------------------------
 
-function addNewFile(file, destEntry, callback, errCallback) {
-    fs.copy(file, path.join(destEntry, file),
-            utils.ifElseErr(callback, errCallback));
+const hashFn = utils.hashSha256;
+function hashFile(pth) {
+    return hashFn(fs.readFileSync(pth));
 }
 
-function updateFile(file, destEntry, callback, errCallback) {
-    var restored = path.join(RESTOREDIR, file);
-    restore(file, restored, function() {
-        jdiff.diff(restored, file, path.join(destEntry, file+PATCHEXT),
-              function() {
-                  fs.remove(restored);
-                  callback.apply(this, arguments);
-              }, errCallback);
-    }, errCallback);
+function hashStoreFile(entry, pth, hash, callback, errCallback) {
+    var dest = ''+path.join(STORAGEDIR, entry, SUMDIR, ''+path.dirname(pth));
+    utils.mkdirp.sync(dest);
+    fs.writeFile(trace(''+path.join(dest, ''+path.basename(pth)), 'writeHash'),
+                 hashFile(pth),
+                 utils.ifElseErr(callback, errCallback));
+    return dest;
+}
+
+function storedFileHash(file, entry) {
+    utils.debug('storedFileHash: file:',file, '..entry:', entry);//DEBUG
+    const pth = ''+path.join(STORAGEDIR, entry, SUMDIR, file);
+    return fs.readFileSync(pth).toString();
+}
+
+function addNewFile(file, hash, destEntry, callback, errCallback) {
+    var done = 0;
+    function _callback() {
+        if (++done >= 2)
+            callback.apply(this, arguments);
+    }
+
+    fs.copy(file, ''+path.join(STORAGEDIR, destEntry, file),
+            utils.ifElseErr(_callback, errCallback));
+    hashStoreFile(destEntry, file, hash, _callback, errCallback)
+}
+
+function updateFile(history, file, hash, destEntry, callback, errCallback) {
+    var done = 0;
+    function _callback() {
+        if (++done >= 2)
+            callback.apply(this, arguments);
+    }
+    var restored = ''+path.join(RESTOREDIR, file);
+
+    if (!history.hasPatches) {
+        jdiff.diff(
+            history.base.full,
+            file,
+            ''+path.join(STORAGEDIR, destEntry, file+PATCHEXT),
+            _callback, errCallback);
+    } else {
+        const restoreCallback = function() {
+            jdiff.diff(restored,
+                       file,
+                       ''+path.join(STORAGEDIR, destEntry, file+PATCHEXT),
+                       function() {
+                           fs.remove(restored);
+                           _callback();
+                       }, errCallback);
+        };
+        restore(file, restored, restoreCallback, errCallback);
+    }
+    hashStoreFile(destEntry, file, hash, _callback, errCallback)
 }
 
 function addFile(file, destEntry, callback, errCallback) {
-    var history = getFileHistory(file);
-    if (!history.hasBase)
-        addNewFile(file, destEntry, callback, errCallback);
-    else if (!history.hasPatches)
-        jdiff.diff(file, path.join(''+destEntry, file+PATCHEXT),
-              callback, errCallback);
-    else
-        updateFile(file, destEntry, callback, errCallback);
+    const history = getFileHistory(file);
+
+    const currHash = hashFile(file);
+    if (!history.hasBase) {
+        addNewFile(file, currHash, destEntry, callback, errCallback);
+    } else {
+        const oldHash = storedFileHash(history.newest.path,
+                                       history.newest.entry);
+        if (currHash === oldHash) {
+            utils.debug('FILE NOT MODIFIED'); callback(); return;
+        }
+        utils.debug('FILE CHANGED');//DEBUG
+        updateFile(history, file, currHash, destEntry,
+                   callback, errCallback);
+    }
 }
 
 function add(pth, destEntry, callback, errCallback) {
-    if (!fs.statSync(pth).isDirectory())
-        addFile(pth, destEntry, callback, errCallback);
-    else {
-        fs.readdir(pth, function(err, files) {
-            if (err) {
-                console.error('DEBUG: restore: err:', err); //DEBUG
-                return errCallback(err);
-            }
-            utils.map(files, function(file) {
-                add(utils.trace(''+path.join(pth, file), 'add[', ']'),
-                    ''+path.join(destEntry, file),
-                    (_ => _),
-                    errCallback);
-                /* TODO: verify that callback is actually called *after*
-                   everything is processed */
-            }, callback);
-        });
-    }
+    utils.forEach(readDirWithPath(pth),
+              (p, cb) => addFile(p, destEntry, cb),
+              callback);
 }
+
+function storeFiles(paths, callback, errCallback) {
+    var currEntry = newEntry();
+
+    function storeFileCallback() {
+        if (entryIsEmpty(currEntry))
+            fs.remove(''+path.join(STORAGEDIR, currEntry),
+                      utils.ifElseErr(callback, errCallback));
+        else
+            callback.apply(this, arguments);;
+    }
+
+    utils.forEach(paths,
+                  (pth, cb) => add(pth, currEntry, cb, errCallback),
+                  storeFileCallback);
+}; 
+
 
 // =Export
 //------------------------------------------------------------
@@ -172,7 +363,7 @@ var basicExport = {
     oldestEntry,
     newEntry,
     add,
-    restore
+    restore,
 };
 
 module.exports = function BackupEntry() {
@@ -187,12 +378,8 @@ module.exports = function BackupEntry() {
         add(pth, currEntry, callback, errCallback);
     }; 
 
-    this.store = function(paths, callback, errCallback) {
-        var currEntry = newEntry();
-        utils.forEach(paths,
-                      pth => add(pth, currEntry, (_ => _), errCallback),
-                      callback);
-    }; 
+    this.store = storeFiles;
+    this.restore = restoreFiles;
 };
 
 Object.assign(module.exports, basicExport);

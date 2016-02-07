@@ -1,15 +1,17 @@
 module.exports = {
-    // External
-    mkdirp: require('mkdirp'),
-    // Internal
+    mkdirp: require('./mkdirp'),
     forEach: require('./asyncForEach'),
     map: require('./asyncMap'),
+    find: require('./find'),
     canReadwrite: require('./canReadwrite'),
     epoch: require('./epoch'),
-    trace: require('./trace'),
     error: require('./error'),
+    errors: require('./errors'),
     removeTrailing: require('./removeTrailing.js'),
     ifElseErr: require('./ifElseErr.js'),
     hash: require('./hash'),
-    debug: require('./debug'),
+    hashSha256: require('./hashSha256'),
+    isInt: require('./isInt'),
+    debug: require('./debug'), //DEBUG
+    trace: require('./trace'), //DEBUG
 };
