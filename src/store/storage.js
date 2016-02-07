@@ -43,6 +43,13 @@ function _entries() {
 var newestEntry = R.compose(R.last, _entries);
 var oldestEntry = R.compose(R.head, _entries);
 
+function entryIsEmpty(entry) {
+    if (trace(readDirWithPath(''+path.join(STORAGEDIR, entry)), 'empty?{', '}').length === 0)
+        return true;
+    else
+        return false;
+}
+
 // =Test entry
 //------------------------------------------------------------
 
@@ -133,7 +140,7 @@ function restore(pth, output, callback, errCallback) {
             utils.map(files, function(file) {
                 restoreFile(''+path.join(pth, file),
                             ''+path.join(output, file),
-                            (_ => _),
+                            ((_, cb) => cb() || _),
                             errCallback);
                 /* TODO: verify that callback is actually called *after*
                    everything is processed */
@@ -168,7 +175,7 @@ function storedFileHash(file, entry) {
 function addNewFile(file, hash, destEntry, callback, errCallback) {
     var done = 0;
     function _callback() {
-        if (++done > 2)
+        if (++done >= 2)
             callback.apply(this, arguments);
     }
 
@@ -178,11 +185,11 @@ function addNewFile(file, hash, destEntry, callback, errCallback) {
 }
 
 function updateFile(history, file, hash, destEntry, callback, errCallback) {
-    utils.debug(`updating "${file}"`);//DEBUG
     var done = 0;
     function _callback() {
-        if (++done > 2)
+        if (++done >= 2)
             callback.apply(this, arguments);
+
     }
     var restored = ''+path.join(RESTOREDIR, file);
 
@@ -209,7 +216,6 @@ function updateFile(history, file, hash, destEntry, callback, errCallback) {
 
 function addFile(file, destEntry, callback, errCallback) {
     var history = getFileHistory(file);
-    utils.debug('file: <<', file, '>>history', history);//DEBUG
 
     const currHash = hashFile(file);
     if (!history.hasBase) {
@@ -217,8 +223,9 @@ function addFile(file, destEntry, callback, errCallback) {
     } else {
         const oldHash = storedFileHash(history.newest.path,
                                        history.newest.entry);
-        utils.debug(`oldHash(`,oldHash,')<=>currHash(',currHash,')');//DEBUG
-        if (currHash === oldHash) { utils.debug('FILE NOT MODIFIED'); return; }
+        if (currHash === oldHash) {
+            utils.debug('FILE NOT MODIFIED'); callback(); return;
+        }
         utils.debug('FILE CHANGED');//DEBUG
         updateFile(history, file, currHash, destEntry,
                    callback, errCallback);
@@ -226,26 +233,25 @@ function addFile(file, destEntry, callback, errCallback) {
 }
 
 function add(pth, destEntry, callback, errCallback) {
-    if (!fs.statSync(pth).isDirectory())
-        addFile(pth, destEntry,
-                callback, errCallback);
-    else {
-        utils.mkdirp.sync(''+path.join(STORAGEDIR, pth));
-        fs.readdir(pth, function(err, files) {
-            if (err) {
-                return errCallback(err);
-            }
-            utils.map(files, function(file) {
-                add(''+path.join(pth, file),
-                    ''+path.join(destEntry),
-                    (_ => _),
-                    errCallback);
-                /* TODO: verify that callback is actually called *after*
-                   everything is processed */
-            }, callback);
-        });
-    }
+    utils.forEach(readDirWithPath(pth),
+              (p, cb) => addFile(p, destEntry, cb),
+              callback);
 }
+
+function storeFiles(paths, callback, errCallback) {
+    var currEntry = newEntry();
+
+    function cleanCurrEntry() {
+        if (entryIsEmpty(currEntry))
+            fs.remove(''+path.join(STORAGEDIR, currEntry),
+                      utils.ifElseErr(callback, errCallback));
+    }
+
+    utils.forEach(paths,
+                  (pth, cb) => add(pth, currEntry, cb, errCallback),
+                  cleanCurrEntry);
+}; 
+
 
 // =Export
 //------------------------------------------------------------
@@ -255,7 +261,8 @@ var basicExport = {
     oldestEntry,
     newEntry,
     add,
-    restore
+    restore,
+    entryIsEmpty
 };
 
 module.exports = function BackupEntry() {
@@ -270,13 +277,7 @@ module.exports = function BackupEntry() {
         add(pth, currEntry, callback, errCallback);
     }; 
 
-    this.store = function(paths, callback, errCallback) {
-        var currEntry = newEntry();
-        utils.forEach(paths,
-                      pth => add(pth, currEntry, (_ => _), errCallback),
-                      callback);
-    }; 
-
+    this.store = storeFiles;
     this.restore = function(paths, callback, errCallback) {
 
     };

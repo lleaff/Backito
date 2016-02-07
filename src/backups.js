@@ -89,7 +89,9 @@ module.exports = {
         entry.store(args, function() {
             utils.forEach(args, function(arg) {
                 entry.restore(arg, dest);
-            }, callback);
+            }, function() {
+                utils.debug('Added all paths');
+                return callback.apply(this, arguments)});
         });
     }
 }
