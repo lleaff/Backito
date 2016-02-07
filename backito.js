@@ -33,11 +33,17 @@ function backs(i, path, args, v, callback)
 	    console.log("Unrecognized type of backup destination.");
 }
 
+function get_config(cfg, callback)
+{
+
+}
+
 function backup(path, v, args)
 {
 	if (v == 1)
 	{
 		console.log("starting backup from config_default");
+
 		
 	}
 	else if (v == 2)
@@ -73,7 +79,7 @@ function check_dest(path)
 }
 
 if (argv.w)
-	wizard.menu();
+	wizard();
 else
 	cron_backito();
 

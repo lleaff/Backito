@@ -5,33 +5,33 @@ var cfgfile = require('./config.js').CFGFILE;
 
 function menu()
 {
-   var destinations = [];
-   console.log("1 : add a local directory");
-   console.log("2 : add a git link");
-   console.log("3 : add a svn link");
-   console.log("4 : add an ftp adress");
-   console.log("5 : add an ssh adress");
-   var num = readlineSync.question('> ');
-   if (isNaN(Number(num)) || (num < 1 || num > 5))
-     return console.log('Please enter one of choices.');
- switch(Number(num)){
-  case 1: 
-  destinations.push(local());
-  break;
-  case 2: 
-  destinations.push(serv());
-  break;
-  case 3: 
-  destinations.push(serv());
-  break;
-  case 4:
-  destinations.push(serv());
-  break;
-  case 5: 
-  destinations.push(serv());
-  break;
-}
-console.log(destinations)
+    var destinations = [];
+    console.log("1 : add a local directory");
+    console.log("2 : add a git link");
+    console.log("3 : add a svn link");
+    console.log("4 : add an ftp adress");
+    console.log("5 : add an ssh adress");
+    var num = readlineSync.question('> ');
+    if (isNaN(Number(num)) || (num < 1 || num > 5))
+        return console.log('Please enter one of choices.');
+    switch(Number(num)){
+        case 1: 
+            destinations.push(local());
+            break;
+        case 2: 
+            destinations.push(serv());
+            break;
+        case 3: 
+            destinations.push(serv());
+            break;
+        case 4:
+            destinations.push(serv());
+            break;
+        case 5: 
+            destinations.push(serv());
+            break;
+    }
+    console.log(destinations)
 }
 
 function local()
@@ -55,8 +55,9 @@ function serv()
    console.log("add your username");
    var user = readlineSync.question('> ');
    obj.user = user;
-   var passwd = readlineSync.question('> ');
-   obj.passwd = passwd;
+   console.log("Enter the ip adress"); 
+   var link = readlineSync.question('> ');
+   obj.dest = passwd;
    return (obj);
 }
 
