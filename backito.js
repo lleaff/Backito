@@ -5,8 +5,10 @@ var cfg   = require('./src/config');
 var utils = require('./src/utils');
 var back  = require('./src/backups.js');
 var cron  = require('./src/timefunc.js');
-var argv  = require('./src/args');
+var cargs  = require('./src/args');
 var wizard = require('./src/wizard.js');
+var forever = require('forever-monitor');
+
 
 function check_info(path)
 {
@@ -82,12 +84,12 @@ function cron_backito()
 {
 	var time = [ 's', 'm', 'h'];
 	var i = 0;
-	Object.keys(argv).map(
+	Object.keys(cargs).map(
 		function(k){
 			if (time.indexOf(k) !== -1)
 			{
 				i += 1;
-				cron['cron_' + k](argv[k], backito);
+				cron['cron_' + k](cargs[k], backito);
 			}
 	});
 	if (i == 0)
@@ -96,15 +98,15 @@ function cron_backito()
 
 function backito()
 {
-	utils.map(argv._, function(path, callback){
+	utils.map(cargs._, function(path, callback){
 		fs.stat(path, function(err, stat) {
 		    if(err == null) {
-		    	if (stat.isDirectory(path) && !argv.r)
+		    	if (stat.isDirectory(path) && !cargs.r)
 				{	
 					console.log(path, "is a directory.[not copied because of missing option r]");
 					return ;		
 				}
-				else if (stat.isFile(path) || (stat.isDirectory(path) && argv.r))
+				else if (stat.isFile(path) || (stat.isDirectory(path) && cargs.r))
 					callback(path);
 		    }
 		    else
@@ -114,7 +116,7 @@ function backito()
 		    }
 		});	
 	}, function(stats){
-		if (!argv.d)
+		if (!cargs.d)
 		{
 			var dest = check_info('./resources/config_default.json');
 			if (dest === null)
@@ -123,31 +125,44 @@ function backito()
 				console.log("Please state the destination with -d or restart backito with w option to configure your config file.");
 			}
 			else
-				backup(dest, 1, argv._);
+				backup(dest, 1, cargs._);
 		}
 		else 
 		{
-			backup(argv.d, 2, argv._);
+			backup(cargs.d, 2, cargs._);
 		}
 	});
 }
 
+function startDaemon() {
+  var daemon = new (forever.Monitor)(process.argv[1], {
+    max: 3,
+    silent: true,
+    args: process.argv.slice(2)
+  });
+  daemon.start();
+  daemon.on('exit', function() { console.log('Backito exited'); });
+}
 
 // =Execution
 //------------------------------------------------------------
 
-if (argv.S)
-    require('./site/server')(argv.S);
-else if (argv.patch) {
+(function() {
+  if (cargs.S)
+    require('./site/server')(cargs.S);
+  else if (cargs.h || cargs.m || cargs.s)
+    startDaemon();
+  else if (cargs.patch) {
     const store = require('./src/store');
-    store.simpleRestore(argv.patch[0], argv.patch[1], argv._[2],
-                       function () {
-                           console.log('Patching succeeded.');
-                       }, function (err) {
-                           console.log('Patching failed'+
-                                       (err ? ': Error ['+err+']' : '.'));
-                       });
-} else if (argv.w)
-	wizard.menu();
-else
-	cron_backito();
+    store.simpleRestore(cargs.patch[0], cargs.patch[1], cargs._[2],
+                        function () {
+                          console.log('Patching succeeded.');
+                        }, function (err) {
+                          console.log('Patching failed'+
+                                      (err ? ': Error ['+err+']' : '.'));
+                        });
+  } else if (cargs.w)
+    wizard.menu();
+  else
+    cron_backito();
+})();

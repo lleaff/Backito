@@ -33,7 +33,7 @@ function rndm(l) {
 }
 
 function newEntry() {
-    var dirname = ''+ENTRYPREFIX+utils.epoch()+rndm(6);
+  var dirname = ''+ENTRYPREFIX+utils.epoch()+process.hrtime()[1];
     var num = '';
     while (utils.isDirectorySync(''+path.join(STORAGEDIR, dirname + num)))
         num = Number(num) + 1;

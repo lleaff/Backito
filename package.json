@@ -25,6 +25,7 @@
     "scp2": "^0.2.2",
     "ssh2": "^0.4.13",
     "svn-spawn": "^0.1.4",
-    "yargs": "^3.32.0"
+      "yargs": "^3.32.0",
+    "httpdispatcher": "latest"
   }
 }
